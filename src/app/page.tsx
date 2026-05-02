@@ -3,127 +3,290 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const DEMO_WALLETS = [
+  { label: "Vitalik.eth", address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
+  { label: "Binance", address: "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8" },
+  { label: "Uniswap", address: "0x1a9C8182C09F50C8318d769245beA52c32BE35BC" },
+];
+
+const FEATURES = [
+  {
+    emoji: "💰",
+    title: "Token Balances",
+    desc: "Native + ERC-20 assets across 60+ chains with live USD pricing",
+    color: "#00E5FF",
+  },
+  {
+    emoji: "🖼️",
+    title: "NFT Portfolio",
+    desc: "ERC-721 & ERC-1155 collectibles with metadata and rarity",
+    color: "#A78BFA",
+  },
+  {
+    emoji: "⚡",
+    title: "Live Activity",
+    desc: "Real-time swaps, transfers & approvals decoded and classified",
+    color: "#34D399",
+  },
+  {
+    emoji: "🏦",
+    title: "DeFi Positions",
+    desc: "Lending, liquidity pools & staking across all major protocols",
+    color: "#FB923C",
+  },
+  {
+    emoji: "🤖",
+    title: "AI Insights",
+    desc: "Claude-powered on-chain behavior analysis and wallet summary",
+    color: "#F472B6",
+  },
+  {
+    emoji: "📋",
+    title: "Transactions",
+    desc: "Full decoded transaction history with gas cost analytics",
+    color: "#FBBF24",
+  },
+];
+
+const STATS = [
+  { value: "60+", label: "EVM Chains" },
+  { value: "<100ms", label: "Latency" },
+  { value: "Real-time", label: "Live Data" },
+  { value: "Free", label: "No Signup" },
+];
+
 export default function Home() {
   const [address, setAddress] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSearch = () => {
     const trimmed = address.trim();
     if (!trimmed) return;
-    setIsLoading(true);
     router.push(`/wallet/${trimmed}`);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSearch();
-  };
-
-  const DEMO_WALLETS = [
-    { label: "Vitalik", address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
-    { label: "Binance Hot Wallet", address: "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8" },
-    { label: "Uniswap Foundation", address: "0x1a9C8182C09F50C8318d769245beA52c32BE35BC" },
-  ];
-
   return (
-    <main className="min-h-screen bg-[#080A0F] text-white overflow-hidden relative">
-      {/* Grid background */}
-      <div
-        className="absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "linear-gradient(#00E5FF 1px, transparent 1px), linear-gradient(90deg, #00E5FF 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
+    <div style={{
+      minHeight: "100vh",
+      background: "#060810",
+      color: "white",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      overflowX: "hidden",
+    }}>
 
-      {/* Glow blobs */}
-      <div className="absolute top-[-200px] left-[-200px] w-[600px] h-[600px] rounded-full bg-[#00E5FF] opacity-[0.06] blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-200px] right-[-100px] w-[500px] h-[500px] rounded-full bg-[#7B2FFF] opacity-[0.07] blur-[120px] pointer-events-none" />
+      {/* Ambient blobs */}
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+        <div style={{
+          position: "absolute", top: "-200px", left: "-100px",
+          width: "600px", height: "600px", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(0,229,255,0.12) 0%, transparent 70%)",
+        }} />
+        <div style={{
+          position: "absolute", top: "40%", right: "-150px",
+          width: "500px", height: "500px", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(123,47,255,0.1) 0%, transparent 70%)",
+        }} />
+        <div style={{
+          position: "absolute", bottom: "-100px", left: "35%",
+          width: "400px", height: "300px", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(167,139,250,0.07) 0%, transparent 70%)",
+        }} />
+        {/* Grid */}
+        <div style={{
+          position: "absolute", inset: 0,
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
+          backgroundSize: "80px 80px",
+        }} />
+      </div>
 
-      {/* Navbar */}
-      <nav className="relative z-10 flex items-center justify-between px-8 py-6 border-b border-white/5">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#00E5FF] flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <circle cx="9" cy="9" r="4" fill="#080A0F" />
-              <circle cx="9" cy="9" r="8" stroke="#080A0F" strokeWidth="2" />
-              <path d="M9 1v2M9 15v2M1 9h2M15 9h2" stroke="#080A0F" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <span className="font-bold text-lg tracking-tight text-white">
-            Chain<span className="text-[#00E5FF]">Vision</span>
+      {/* Nav */}
+      <nav style={{
+        position: "relative", zIndex: 10,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "20px 40px",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+      }}>
+        {/* Logo */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{
+            width: "38px", height: "38px", borderRadius: "12px",
+            background: "linear-gradient(135deg, rgba(0,229,255,0.15), rgba(123,47,255,0.15))",
+            border: "1px solid rgba(0,229,255,0.3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "18px",
+          }}>⬡</div>
+          <span style={{ fontSize: "18px", fontWeight: 800, letterSpacing: "-0.5px" }}>
+            Chain<span style={{ color: "#00E5FF" }}>Vision</span>
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-white/40 font-mono">Powered by</span>
-          <span className="text-xs font-bold text-white/70 border border-white/10 rounded-full px-3 py-1">
-            Dune SIM API
+
+        {/* Pill */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: "8px",
+          padding: "8px 16px", borderRadius: "999px",
+          background: "rgba(0,229,255,0.06)",
+          border: "1px solid rgba(0,229,255,0.2)",
+        }}>
+          <div style={{
+            width: "7px", height: "7px", borderRadius: "50%", background: "#00E5FF",
+            boxShadow: "0 0 8px #00E5FF",
+            animation: "pulse 2s ease-in-out infinite",
+          }} />
+          <span style={{ fontSize: "12px", color: "rgba(0,229,255,0.8)", fontFamily: "monospace" }}>
+            Powered by Dune SIM API
           </span>
         </div>
       </nav>
 
       {/* Hero */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-4 pt-24 pb-16">
+      <div style={{
+        position: "relative", zIndex: 10,
+        display: "flex", flexDirection: "column", alignItems: "center",
+        padding: "80px 24px 60px",
+      }}>
+
         {/* Badge */}
-        <div className="mb-6 flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#00E5FF] animate-pulse" />
-          <span className="text-xs text-white/60 font-mono">Real-time · 60+ EVM Chains · AI-Powered</span>
+        <div style={{
+          marginBottom: "32px",
+          padding: "8px 20px", borderRadius: "999px",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          fontSize: "13px", color: "rgba(255,255,255,0.5)",
+          letterSpacing: "0.03em",
+        }}>
+          🚀 &nbsp;Real-time multichain wallet intelligence — no indexer setup required
         </div>
 
-        {/* Title */}
-        <h1 className="text-center text-5xl sm:text-7xl font-black leading-none tracking-tight mb-4">
-          <span className="block text-white">See Every</span>
-          <span
-            className="block"
-            style={{
-              background: "linear-gradient(135deg, #00E5FF 0%, #7B2FFF 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
+        {/* Headline */}
+        <h1 style={{
+          textAlign: "center",
+          fontSize: "clamp(52px, 8vw, 92px)",
+          fontWeight: 900,
+          lineHeight: 1.0,
+          letterSpacing: "-3px",
+          marginBottom: "24px",
+        }}>
+          <span style={{ display: "block", color: "white" }}>See Every</span>
+          <span style={{
+            display: "block",
+            background: "linear-gradient(135deg, #00E5FF 0%, #7B2FFF 50%, #A78BFA 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}>
             Chain. Every Move.
           </span>
         </h1>
 
-        <p className="text-center text-white/50 text-base sm:text-lg max-w-lg mb-12 leading-relaxed">
-          Paste any wallet address and get instant multichain intelligence — balances, NFTs, DeFi positions, activity history, and an AI-generated on-chain story.
+        <p style={{
+          textAlign: "center",
+          fontSize: "18px",
+          color: "rgba(255,255,255,0.4)",
+          maxWidth: "500px",
+          lineHeight: 1.7,
+          marginBottom: "52px",
+        }}>
+          Drop any wallet address and get a complete picture — token balances, NFTs, DeFi positions, live activity, and AI-generated insights.
         </p>
 
-        {/* Search bar */}
-        <div className="w-full max-w-2xl">
-          <div className="relative flex items-center gap-0 bg-white/5 border border-white/10 rounded-2xl p-2 focus-within:border-[#00E5FF]/50 transition-all duration-300">
-            <div className="pl-3 pr-2 flex-shrink-0">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-white/30">
-                <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5" />
-                <path d="M13.5 13.5L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        {/* Search box */}
+        <div style={{ width: "100%", maxWidth: "700px" }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "8px",
+            padding: "8px",
+            borderRadius: "18px",
+            background: focused ? "rgba(0,229,255,0.05)" : "rgba(255,255,255,0.03)",
+            border: focused ? "1px solid rgba(0,229,255,0.5)" : "1px solid rgba(255,255,255,0.08)",
+            boxShadow: focused ? "0 0 50px rgba(0,229,255,0.08), 0 0 0 1px rgba(0,229,255,0.1)" : "none",
+            transition: "all 0.25s ease",
+          }}>
+            {/* Icon */}
+            <div style={{ padding: "0 8px 0 12px", flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <circle cx="9" cy="9" r="6" stroke={focused ? "#00E5FF" : "rgba(255,255,255,0.25)"} strokeWidth="1.5" style={{ transition: "stroke 0.2s" }}/>
+                <path d="M13.5 13.5L17 17" stroke={focused ? "#00E5FF" : "rgba(255,255,255,0.25)"} strokeWidth="1.5" strokeLinecap="round" style={{ transition: "stroke 0.2s" }}/>
               </svg>
             </div>
+
             <input
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="0x... or ENS name"
-              className="flex-1 bg-transparent text-white placeholder-white/20 text-sm font-mono outline-none py-3 px-2"
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              placeholder="0x... wallet address or ENS name"
+              style={{
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                color: "white",
+                fontSize: "15px",
+                fontFamily: "'Courier New', monospace",
+                padding: "14px 4px",
+                caretColor: "#00E5FF",
+              }}
             />
+
             <button
               onClick={handleSearch}
-              disabled={!address.trim() || isLoading}
-              className="flex-shrink-0 bg-[#00E5FF] text-[#080A0F] font-bold text-sm px-6 py-3 rounded-xl hover:bg-white transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!address.trim()}
+              style={{
+                flexShrink: 0,
+                padding: "14px 30px",
+                borderRadius: "12px",
+                border: "none",
+                fontWeight: 700,
+                fontSize: "14px",
+                cursor: address.trim() ? "pointer" : "not-allowed",
+                background: address.trim()
+                  ? "linear-gradient(135deg, #00E5FF, #00BBDD)"
+                  : "rgba(255,255,255,0.06)",
+                color: address.trim() ? "#060810" : "rgba(255,255,255,0.2)",
+                transition: "all 0.2s ease",
+                letterSpacing: "0.02em",
+              }}
             >
-              {isLoading ? "..." : "Analyze →"}
+              Analyze →
             </button>
           </div>
 
-          {/* Demo wallets */}
-          <div className="flex items-center gap-3 mt-4 flex-wrap justify-center">
-            <span className="text-xs text-white/30">Try:</span>
+          {/* Demo wallet pills */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: "8px",
+            marginTop: "14px", flexWrap: "wrap", justifyContent: "center",
+          }}>
+            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)" }}>Try demo:</span>
             {DEMO_WALLETS.map((w) => (
               <button
                 key={w.address}
                 onClick={() => setAddress(w.address)}
-                className="text-xs text-[#00E5FF]/70 hover:text-[#00E5FF] transition-colors font-mono border border-white/10 rounded-full px-3 py-1 hover:border-[#00E5FF]/40"
+                style={{
+                  fontSize: "12px",
+                  color: "rgba(0,229,255,0.7)",
+                  background: "rgba(0,229,255,0.05)",
+                  border: "1px solid rgba(0,229,255,0.15)",
+                  borderRadius: "999px",
+                  padding: "5px 14px",
+                  cursor: "pointer",
+                  fontFamily: "monospace",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget;
+                  el.style.color = "#00E5FF";
+                  el.style.borderColor = "rgba(0,229,255,0.5)";
+                  el.style.background = "rgba(0,229,255,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget;
+                  el.style.color = "rgba(0,229,255,0.7)";
+                  el.style.borderColor = "rgba(0,229,255,0.15)";
+                  el.style.background = "rgba(0,229,255,0.05)";
+                }}
               >
                 {w.label}
               </button>
@@ -131,36 +294,108 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Feature cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-20 w-full max-w-3xl">
-          {[
-            { icon: "💰", title: "Token Balances", desc: "All ERC-20s + native assets with USD value" },
-            { icon: "🖼️", title: "NFT Portfolio", desc: "Every ERC-721 & ERC-1155 collectible" },
-            { icon: "⚡", title: "Live Activity", desc: "Swaps, transfers, approvals in real-time" },
-            { icon: "🤖", title: "AI Insights", desc: "GPT-powered on-chain behavior summary" },
-          ].map((f) => (
-            <div
-              key={f.title}
-              className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5 hover:border-[#00E5FF]/20 hover:bg-white/[0.05] transition-all duration-300 group"
-            >
-              <div className="text-2xl mb-3">{f.icon}</div>
-              <div className="text-sm font-semibold text-white mb-1 group-hover:text-[#00E5FF] transition-colors">
-                {f.title}
+        {/* Stats */}
+        <div style={{
+          display: "flex",
+          marginTop: "64px",
+          borderRadius: "16px",
+          overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(255,255,255,0.02)",
+        }}>
+          {STATS.map((s, i) => (
+            <div key={s.label} style={{
+              padding: "22px 36px",
+              textAlign: "center",
+              borderRight: i < STATS.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+            }}>
+              <div style={{ fontSize: "24px", fontWeight: 800, color: "white", letterSpacing: "-0.5px" }}>
+                {s.value}
               </div>
-              <div className="text-xs text-white/40 leading-relaxed">{f.desc}</div>
+              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", marginTop: "4px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                {s.label}
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Powered by section */}
-        <div className="mt-16 flex items-center gap-6 opacity-30">
-          <span className="text-xs uppercase tracking-widest text-white/50">Data by</span>
-          <div className="h-px w-16 bg-white/20" />
-          <span className="text-sm font-bold text-white">Dune SIM</span>
-          <div className="h-px w-16 bg-white/20" />
-          <span className="text-xs uppercase tracking-widest text-white/50">60+ Chains</span>
+        {/* Section title */}
+        <div style={{ marginTop: "80px", marginBottom: "8px", textAlign: "center" }}>
+          <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "12px" }}>
+            What you get
+          </div>
+          <h2 style={{ fontSize: "32px", fontWeight: 800, letterSpacing: "-1px", color: "white" }}>
+            Everything about a wallet.
+          </h2>
+        </div>
+
+        {/* Feature grid */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "12px",
+          maxWidth: "880px",
+          width: "100%",
+          marginTop: "32px",
+        }}>
+          {FEATURES.map((f) => (
+            <div
+              key={f.title}
+              onMouseEnter={() => setHoveredFeature(f.title)}
+              onMouseLeave={() => setHoveredFeature(null)}
+              style={{
+                background: hoveredFeature === f.title ? `${f.color}08` : "rgba(255,255,255,0.02)",
+                border: hoveredFeature === f.title ? `1px solid ${f.color}35` : "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "16px",
+                padding: "28px 24px",
+                transition: "all 0.2s ease",
+                transform: hoveredFeature === f.title ? "translateY(-3px)" : "translateY(0)",
+                cursor: "default",
+              }}
+            >
+              <div style={{
+                fontSize: "28px",
+                marginBottom: "16px",
+                width: "52px", height: "52px",
+                borderRadius: "14px",
+                background: `${f.color}12`,
+                border: `1px solid ${f.color}25`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {f.emoji}
+              </div>
+              <div style={{ fontSize: "15px", fontWeight: 700, color: "white", marginBottom: "8px" }}>
+                {f.title}
+              </div>
+              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", lineHeight: 1.65 }}>
+                {f.desc}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer note */}
+        <div style={{
+          marginTop: "80px",
+          display: "flex", alignItems: "center", gap: "16px",
+          opacity: 0.25,
+        }}>
+          <div style={{ height: "1px", width: "48px", background: "white" }} />
+          <span style={{ fontSize: "12px", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            Data by Dune SIM · 60+ EVM Chains
+          </span>
+          <div style={{ height: "1px", width: "48px", background: "white" }} />
         </div>
       </div>
-    </main>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::placeholder { color: rgba(255,255,255,0.2); }
+      `}</style>
+    </div>
   );
 }

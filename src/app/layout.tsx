@@ -1,34 +1,22 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Space_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-sans",
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const spaceMono = Space_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  weight: ["400", "700"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
   title: "ChainVision — Multichain Wallet Intelligence",
   description:
-    "Real-time multichain wallet analytics powered by Dune SIM API. Explore balances, NFTs, DeFi positions, and AI-powered on-chain insights across 60+ EVM chains.",
-  keywords: ["blockchain", "wallet", "analytics", "DeFi", "NFT", "multichain", "Dune SIM"],
+    "Real-time multichain wallet analytics powered by Dune SIM API. Balances, NFTs, DeFi positions, and AI insights across 60+ EVM chains.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${spaceMono.variable}`}>
-      <body className="font-sans antialiased">{children}</body>
+    <html lang="en">
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
