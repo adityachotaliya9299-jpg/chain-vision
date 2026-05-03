@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 
-// ─── Types (inline to keep this file self-contained) ─────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface TokenBalance {
   chain: string;
   symbol: string;
@@ -13,6 +13,7 @@ interface TokenBalance {
   price_usd: number | null;
   logo_url: string | null;
   address: string;
+  decimals: number;
 }
 interface ActivityItem {
   chain: string;
@@ -47,17 +48,44 @@ interface Transaction {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function fmt(v: number | null) {
-  if (v === null || v === undefined) return "—";
+function fmt(v: number | null | undefined): string {
+  if (v === null || v === undefined || isNaN(v)) return "—";
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
   if (v >= 1_000) return `$${(v / 1_000).toFixed(2)}K`;
   return `$${v.toFixed(2)}`;
 }
-function short(a: string) {
+
+// FIX: Parse balance properly — SIM API returns raw balance as string
+// We must divide by 10^decimals to get human-readable amount
+function parseBalance(raw: string, decimals: number): number {
+  if (!raw || raw === "0") return 0;
+  try {
+    const dec = decimals ?? 18;
+    // Handle very large BigInt strings safely
+    const divisor = Math.pow(10, dec);
+    const num = parseFloat(raw) / divisor;
+    return isFinite(num) ? num : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function fmtBalance(raw: string, decimals: number): string {
+  const n = parseBalance(raw, decimals);
+  if (n === 0) return "0";
+  if (n < 0.0001) return n.toExponential(2);
+  if (n < 1) return n.toFixed(4);
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(2)}K`;
+  return n.toFixed(4);
+}
+
+function short(a: string): string {
   if (!a) return "—";
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
-function ago(iso: string) {
+
+function ago(iso: string): string {
   const d = Date.now() - new Date(iso).getTime();
   const m = Math.floor(d / 60000);
   if (m < 60) return `${m}m`;
@@ -65,59 +93,233 @@ function ago(iso: string) {
   if (h < 24) return `${h}h`;
   return `${Math.floor(h / 24)}d`;
 }
-function actColor(t: string) {
+
+function actColor(t: string): string {
   if (t === "receive") return "#00FF88";
   if (t === "send") return "#FF4466";
   if (t === "swap") return "#00E5FF";
   if (t === "approve") return "#FFAA00";
-  return "#888";
+  return "#555";
 }
 
-// ─── Components ───────────────────────────────────────────────────────────────
-function Panel({ title, children, flex = 1 }: { title: string; children: React.ReactNode; flex?: number }) {
+// ─── Sub-components ───────────────────────────────────────────────────────────
+function SkeletonRow({ cols }: { cols: number }) {
   return (
-    <div style={{
-      flex,
-      border: "1px solid #1a2a1a",
-      display: "flex",
-      flexDirection: "column",
-      minWidth: 0,
-      background: "#040804",
-    }}>
-      <div style={{
-        padding: "8px 14px",
-        borderBottom: "1px solid #1a2a1a",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        background: "#060d06",
-      }}>
-        <span style={{ color: "#00FF88", fontSize: "10px" }}>▶</span>
-        <span style={{ fontSize: "11px", color: "#00FF88", fontFamily: "monospace", letterSpacing: "0.15em", textTransform: "uppercase" }}>
-          {title}
-        </span>
-      </div>
-      <div style={{ flex: 1, overflow: "auto", padding: "0" }}>
-        {children}
-      </div>
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, padding: "10px 20px", borderBottom: "1px solid #0a150a", gap: "12px" }}>
+      {Array.from({ length: cols }).map((_, i) => (
+        <div key={i} style={{ height: "10px", background: "#0d1a0d", borderRadius: "2px", animation: "shimmer 1.5s infinite" }} />
+      ))}
     </div>
   );
 }
 
-function SkeletonRow({ cols }: { cols: number }) {
+function Empty({ msg }: { msg: string }) {
   return (
-    <div style={{ display: "flex", gap: "0", padding: "10px 14px", borderBottom: "1px solid #0d1a0d" }}>
-      {Array.from({ length: cols }).map((_, i) => (
-        <div key={i} style={{
-          flex: 1,
-          height: "10px",
-          background: "linear-gradient(90deg, #0d1a0d, #1a2a1a, #0d1a0d)",
-          backgroundSize: "200% 100%",
-          animation: "shimmer 1.5s infinite",
-          borderRadius: "2px",
-          margin: "0 4px",
-        }} />
-      ))}
+    <div style={{ padding: "60px", textAlign: "center", color: "#1a3a1a", fontFamily: "monospace", fontSize: "13px", letterSpacing: "0.1em" }}>
+      [ {msg} ]
+    </div>
+  );
+}
+
+// ─── AI Insights Component ────────────────────────────────────────────────────
+function AIInsights({ address, balances, activity, nfts }: {
+  address: string;
+  balances: TokenBalance[] | null;
+  activity: ActivityItem[] | null;
+  nfts: NFTItem[] | null;
+}) {
+  const [insight, setInsight] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tick, setTick] = useState(true);
+
+  useEffect(() => {
+    const t = setInterval(() => setTick((p) => !p), 400);
+    return () => clearInterval(t);
+  }, []);
+
+  const runAnalysis = async () => {
+    setLoading(true);
+    setError(null);
+    setInsight(null);
+
+    const totalUSD = (balances || []).reduce((s, b) => s + (b.balance_usd || 0), 0);
+    const chains = [...new Set((balances || []).map((b) => b.chain))];
+    const topTokens = (balances || [])
+      .sort((a, b) => (b.balance_usd || 0) - (a.balance_usd || 0))
+      .slice(0, 5)
+      .map((b) => `${b.symbol} ($${(b.balance_usd || 0).toFixed(0)} on ${b.chain})`);
+    const actTypes = (activity || []).reduce((acc: Record<string, number>, a) => {
+      acc[a.activity_type] = (acc[a.activity_type] || 0) + 1;
+      return acc;
+    }, {});
+    const nftCount = nfts?.length || 0;
+
+    const prompt = `You are a blockchain analyst. Analyze this wallet and provide a concise intelligence report.
+
+WALLET: ${address}
+TOTAL_VALUE_USD: $${totalUSD.toFixed(2)}
+ACTIVE_CHAINS: ${chains.join(", ")}
+TOKEN_COUNT: ${balances?.length || 0}
+TOP_TOKENS: ${topTokens.join(" | ")}
+RECENT_ACTIVITY_BREAKDOWN: ${JSON.stringify(actTypes)}
+NFTs_OWNED: ${nftCount}
+
+Write a terminal-style intelligence report with these sections:
+1. WALLET_PROFILE — What type of wallet is this? (whale, defi_degen, nft_collector, dormant, etc.)
+2. CHAIN_BEHAVIOR — Which chains do they prefer and why?
+3. ASSET_STRATEGY — What does their portfolio composition suggest?
+4. ACTIVITY_PATTERN — Are they active trader, long-term holder, or something else?
+5. RISK_ASSESSMENT — Any notable risks or interesting observations?
+6. SUMMARY — One-line verdict on this wallet.
+
+Format each section as:
+[SECTION_NAME]
+analysis text here...
+
+Keep each section 2-3 sentences. Use blockchain/analyst language. Be specific using the data provided.`;
+
+    try {
+      const res = await fetch("/api/ai-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setInsight(data.insight);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "AI analysis failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sections = insight
+    ? insight.split(/\[([A-Z_]+)\]/).filter(Boolean).reduce((acc: Array<{ title: string; text: string }>, part, i, arr) => {
+        if (i % 2 === 0 && arr[i + 1]) acc.push({ title: part.trim(), text: arr[i + 1].trim() });
+        return acc;
+      }, [])
+    : [];
+
+  const sectionColors: Record<string, string> = {
+    WALLET_PROFILE: "#00FF88",
+    CHAIN_BEHAVIOR: "#00E5FF",
+    ASSET_STRATEGY: "#FFAA00",
+    ACTIVITY_PATTERN: "#A78BFA",
+    RISK_ASSESSMENT: "#FF6B6B",
+    SUMMARY: "#34D399",
+  };
+
+  return (
+    <div style={{ padding: "24px 20px" }}>
+      {!insight && !loading && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "16px" }}>
+          <div style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em" }}>
+            ROOT@CHAINVISION:~$ RUN_AI_ANALYSIS --wallet {short(address)}
+          </div>
+          <div style={{
+            border: "1px solid #1a3a1a",
+            background: "#030a03",
+            padding: "20px 24px",
+            maxWidth: "640px",
+          }}>
+            <div style={{ fontSize: "12px", color: "#336633", lineHeight: 1.8, marginBottom: "16px" }}>
+              // This module uses Claude AI to analyze on-chain data and generate<br />
+              // a comprehensive intelligence report for this wallet address.<br />
+              // Requires: TOKEN_BALANCES + ACTIVITY + NFT data (auto-loaded)
+            </div>
+            <div style={{ fontSize: "11px", color: "#1a3a1a", marginBottom: "20px", letterSpacing: "0.06em" }}>
+              DATA_READY: {balances ? `${balances.length} tokens` : "loading..."} | {activity ? `${activity.length} activities` : "loading..."} | {nfts ? `${nfts.length} NFTs` : "loading..."}
+            </div>
+            <button
+              onClick={runAnalysis}
+              style={{
+                background: "#00FF88",
+                color: "#020502",
+                border: "none",
+                padding: "12px 28px",
+                fontFamily: "monospace",
+                fontSize: "12px",
+                fontWeight: "bold",
+                letterSpacing: "0.12em",
+                cursor: "pointer",
+              }}
+            >
+              ▶ EXECUTE_AI_ANALYSIS
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em", marginBottom: "12px" }}>
+            RUNNING_CLAUDE_ANALYSIS{tick ? "█" : " "}
+          </div>
+          {["WALLET_PROFILE", "CHAIN_BEHAVIOR", "ASSET_STRATEGY", "ACTIVITY_PATTERN", "RISK_ASSESSMENT", "SUMMARY"].map((s) => (
+            <div key={s} style={{ borderBottom: "1px solid #0d1a0d", padding: "16px 0" }}>
+              <div style={{ fontSize: "10px", color: "#1a3a1a", letterSpacing: "0.12em", marginBottom: "8px" }}>[{s}]</div>
+              <div style={{ height: "10px", background: "#0d1a0d", borderRadius: "2px", animation: "shimmer 1.5s infinite", maxWidth: "600px", marginBottom: "6px" }} />
+              <div style={{ height: "10px", background: "#0d1a0d", borderRadius: "2px", animation: "shimmer 1.5s infinite", maxWidth: "500px" }} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <div style={{ color: "#FF4466", fontFamily: "monospace", fontSize: "12px", padding: "16px", border: "1px solid #550000", background: "#1a0505" }}>
+          ERROR: {error}<br />
+          <button onClick={runAnalysis} style={{ marginTop: "8px", background: "none", border: "1px solid #550000", color: "#FF4466", fontFamily: "monospace", fontSize: "11px", padding: "4px 12px", cursor: "pointer" }}>
+            RETRY →
+          </button>
+        </div>
+      )}
+
+      {sections.length > 0 && (
+        <div>
+          <div style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em", marginBottom: "20px" }}>
+            ── AI_ANALYSIS_COMPLETE ── POWERED_BY_CLAUDE ────────────────────────
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+            {sections.map((s) => (
+              <div key={s.title} style={{ borderBottom: "1px solid #0d1a0d", padding: "18px 0" }}>
+                <div style={{
+                  fontSize: "10px",
+                  fontWeight: "bold",
+                  color: sectionColors[s.title] || "#00FF88",
+                  letterSpacing: "0.15em",
+                  marginBottom: "8px",
+                }}>
+                  [{s.title}]
+                </div>
+                <div style={{ fontSize: "13px", color: "#88BB88", lineHeight: 1.7, maxWidth: "720px" }}>
+                  {s.text}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: "20px" }}>
+            <button
+              onClick={runAnalysis}
+              style={{
+                background: "transparent",
+                border: "1px solid #1a3a1a",
+                color: "#336633",
+                fontFamily: "monospace",
+                fontSize: "10px",
+                padding: "8px 20px",
+                cursor: "pointer",
+                letterSpacing: "0.08em",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#00FF88"; e.currentTarget.style.borderColor = "#00FF88"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "#336633"; e.currentTarget.style.borderColor = "#1a3a1a"; }}
+            >
+              ↻ RE_RUN_ANALYSIS
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -128,7 +330,7 @@ export default function WalletPage() {
   const router = useRouter();
   const address = decodeURIComponent(params.address as string);
 
-  const [tab, setTab] = useState<"balances" | "activity" | "nfts" | "transactions">("balances");
+  const [tab, setTab] = useState<"balances" | "activity" | "nfts" | "transactions" | "ai">("balances");
   const [balances, setBalances] = useState<TokenBalance[] | null>(null);
   const [activity, setActivity] = useState<ActivityItem[] | null>(null);
   const [nfts, setNfts] = useState<NFTItem[] | null>(null);
@@ -139,13 +341,12 @@ export default function WalletPage() {
   const [chainCount, setChainCount] = useState(0);
   const [tick, setTick] = useState(true);
 
-  // Blinking cursor effect
   useEffect(() => {
     const t = setInterval(() => setTick((p) => !p), 600);
     return () => clearInterval(t);
   }, []);
 
-  const fetchData = useCallback(async (type: typeof tab) => {
+  const fetchData = useCallback(async (type: "balances" | "activity" | "nfts" | "transactions") => {
     setLoading(true);
     setError(null);
     try {
@@ -157,8 +358,7 @@ export default function WalletPage() {
         setBalances(b);
         const total = b.reduce((s, t) => s + (t.balance_usd || 0), 0);
         setTotalUSD(total);
-        const chains = new Set(b.map((t) => t.chain));
-        setChainCount(chains.size);
+        setChainCount(new Set(b.map((t) => t.chain)).size);
       }
       if (type === "activity") setActivity(data.activity || []);
       if (type === "nfts") setNfts(data.collectibles || []);
@@ -170,22 +370,43 @@ export default function WalletPage() {
     }
   }, [address]);
 
-  useEffect(() => {
-    fetchData(tab);
-  }, [tab, fetchData]);
+  // Load balances on mount (needed for header stats + AI)
+  useEffect(() => { fetchData("balances"); }, [fetchData]);
 
-  // Also preload balances for the header stats
+  // Load tab data when tab changes
   useEffect(() => {
-    if (tab !== "balances") fetchData("balances");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (tab === "activity" && !activity) fetchData("activity");
+    if (tab === "nfts" && !nfts) fetchData("nfts");
+    if (tab === "transactions" && !txns) fetchData("transactions");
+    if (tab === "ai") {
+      // Pre-load all data for AI
+      if (!activity) fetchData("activity");
+      if (!nfts) fetchData("nfts");
+    }
+  }, [tab, activity, nfts, txns, fetchData]);
 
   const TABS = [
     { key: "balances", label: "TOKENS" },
     { key: "activity", label: "ACTIVITY" },
     { key: "nfts", label: "NFTs" },
     { key: "transactions", label: "TXN_HISTORY" },
+    { key: "ai", label: "AI_INSIGHTS", special: true },
   ] as const;
+
+  const TH = ({ cols }: { cols: string[] }) => (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: `repeat(${cols.length}, 1fr)`,
+      padding: "8px 20px",
+      borderBottom: "1px solid #1a2a1a",
+      background: "#030a03",
+      position: "sticky", top: 0, zIndex: 1,
+    }}>
+      {cols.map((h) => (
+        <span key={h} style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.12em" }}>{h}</span>
+      ))}
+    </div>
+  );
 
   return (
     <div style={{
@@ -196,105 +417,69 @@ export default function WalletPage() {
       display: "flex",
       flexDirection: "column",
     }}>
+      {/* Scanline */}
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+        backgroundImage: "repeating-linear-gradient(0deg, rgba(0,255,136,0.012) 0px, rgba(0,255,136,0.012) 1px, transparent 1px, transparent 3px)",
+      }} />
 
       {/* Top bar */}
       <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+        position: "relative", zIndex: 10,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "10px 20px",
         borderBottom: "1px solid #1a2a1a",
         background: "#030703",
         flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <button
-            onClick={() => router.push("/")}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#00FF88",
-              fontFamily: "monospace",
-              fontSize: "12px",
-              cursor: "pointer",
-              letterSpacing: "0.1em",
-            }}
-          >
+          <button onClick={() => router.push("/")} style={{
+            background: "none", border: "none", color: "#00FF88",
+            fontFamily: "monospace", fontSize: "13px", cursor: "pointer",
+            fontWeight: "bold", letterSpacing: "0.05em",
+          }}>
             ← CHAIN<span style={{ color: "#00E5FF" }}>VISION</span>
           </button>
-          <span style={{ color: "#1a3a1a", fontSize: "12px" }}>│</span>
-          <span style={{ fontSize: "11px", color: "#336633" }}>WALLET_ANALYSIS</span>
+          <span style={{ color: "#1a3a1a" }}>│</span>
+          <span style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em" }}>WALLET_ANALYSIS</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           <span style={{ fontSize: "10px", color: "#336633" }}>
-            SIM_API:{" "}
-            <span style={{ color: "#00FF88" }}>CONNECTED</span>
+            SIM_API: <span style={{ color: "#00FF88" }}>CONNECTED</span>
           </span>
           <span style={{ fontSize: "10px", color: "#336633" }}>
             {new Date().toUTCString().slice(0, 25)}
           </span>
-          <span style={{ color: "#00FF88", fontSize: "10px" }}>
-            {tick ? "█" : " "}
-          </span>
+          <span style={{ color: "#00FF88", fontSize: "12px" }}>{tick ? "█" : " "}</span>
         </div>
       </div>
 
-      {/* Address + stats header */}
+      {/* Address + stats */}
       <div style={{
+        position: "relative", zIndex: 10,
         padding: "16px 20px",
         borderBottom: "1px solid #1a2a1a",
         background: "#030a03",
         flexShrink: 0,
       }}>
-        <div style={{ fontSize: "10px", color: "#336633", marginBottom: "6px", letterSpacing: "0.1em" }}>
-          TARGET_ADDRESS
-        </div>
-        <div style={{
-          fontSize: "clamp(13px, 1.5vw, 16px)",
-          color: "#00E5FF",
-          letterSpacing: "0.05em",
-          wordBreak: "break-all",
-          marginBottom: "16px",
-        }}>
+        <div style={{ fontSize: "9px", color: "#336633", marginBottom: "6px", letterSpacing: "0.12em" }}>TARGET_ADDRESS</div>
+        <div style={{ fontSize: "clamp(11px, 1.5vw, 14px)", color: "#00E5FF", letterSpacing: "0.04em", wordBreak: "break-all", marginBottom: "16px" }}>
           {address}
         </div>
-
-        {/* Stats row */}
         <div style={{ display: "flex", gap: "0", flexWrap: "wrap" }}>
           {[
-            {
-              label: "TOTAL_VALUE_USD",
-              value: totalUSD !== null ? fmt(totalUSD) : "LOADING…",
-              color: "#00FF88",
-            },
-            {
-              label: "CHAINS_ACTIVE",
-              value: chainCount > 0 ? `${chainCount}` : "—",
-              color: "#00E5FF",
-            },
-            {
-              label: "TOKENS_HELD",
-              value: balances ? `${balances.length}` : "—",
-              color: "#FFAA00",
-            },
-            {
-              label: "NFTs_OWNED",
-              value: nfts ? `${nfts.length}` : "—",
-              color: "#A78BFA",
-            },
+            { label: "TOTAL_VALUE_USD", value: totalUSD !== null ? fmt(totalUSD) : "SCANNING…", color: "#00FF88" },
+            { label: "CHAINS_ACTIVE", value: chainCount > 0 ? `${chainCount}` : "—", color: "#00E5FF" },
+            { label: "TOKENS_HELD", value: balances ? `${balances.length}` : "—", color: "#FFAA00" },
+            { label: "NFTs_OWNED", value: nfts ? `${nfts.length}` : "—", color: "#A78BFA" },
           ].map((s, i) => (
             <div key={s.label} style={{
               flex: "1 1 120px",
               padding: "10px 20px",
-              borderRight: "1px solid #1a2a1a",
-              borderLeft: i === 0 ? "none" : undefined,
+              borderRight: i < 3 ? "1px solid #1a2a1a" : "none",
             }}>
-              <div style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.12em", marginBottom: "4px" }}>
-                {s.label}
-              </div>
-              <div style={{ fontSize: "20px", fontWeight: "bold", color: s.color, letterSpacing: "-0.5px" }}>
-                {s.value}
-              </div>
+              <div style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.1em", marginBottom: "4px" }}>{s.label}</div>
+              <div style={{ fontSize: "22px", fontWeight: "bold", color: s.color }}>{s.value}</div>
             </div>
           ))}
         </div>
@@ -302,6 +487,7 @@ export default function WalletPage() {
 
       {/* Tab bar */}
       <div style={{
+        position: "relative", zIndex: 10,
         display: "flex",
         borderBottom: "1px solid #1a2a1a",
         background: "#030703",
@@ -312,17 +498,18 @@ export default function WalletPage() {
             key={t.key}
             onClick={() => setTab(t.key)}
             style={{
-              padding: "10px 24px",
+              padding: "10px 22px",
               background: tab === t.key ? "#0a1a0a" : "transparent",
               border: "none",
               borderRight: "1px solid #1a2a1a",
-              borderBottom: tab === t.key ? "2px solid #00FF88" : "2px solid transparent",
-              color: tab === t.key ? "#00FF88" : "#336633",
+              borderBottom: tab === t.key ? `2px solid ${"special" in t && t.special ? "#A78BFA" : "#00FF88"}` : "2px solid transparent",
+              color: tab === t.key ? ("special" in t && t.special ? "#A78BFA" : "#00FF88") : "#336633",
               fontFamily: "monospace",
               fontSize: "11px",
-              letterSpacing: "0.12em",
+              letterSpacing: "0.1em",
               cursor: "pointer",
               transition: "all 0.1s",
+              whiteSpace: "nowrap",
             }}
           >
             {tab === t.key && "▶ "}{t.label}
@@ -330,7 +517,7 @@ export default function WalletPage() {
         ))}
         <div style={{ flex: 1 }} />
         <button
-          onClick={() => fetchData(tab)}
+          onClick={() => { if (tab !== "ai") fetchData(tab as "balances" | "activity" | "nfts" | "transactions"); }}
           style={{
             padding: "10px 20px",
             background: "transparent",
@@ -349,227 +536,108 @@ export default function WalletPage() {
         </button>
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-
+      {/* Content area */}
+      <div style={{ position: "relative", zIndex: 10, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         {error && (
-          <div style={{
-            margin: "16px 20px",
-            padding: "12px 16px",
-            background: "#1a0505",
-            border: "1px solid #550000",
-            color: "#FF4466",
-            fontFamily: "monospace",
-            fontSize: "12px",
-          }}>
+          <div style={{ margin: "16px 20px", padding: "12px 16px", background: "#1a0505", border: "1px solid #550000", color: "#FF4466", fontSize: "12px" }}>
             ERROR: {error}
           </div>
         )}
 
-        {/* ── BALANCES ──────────────────────────────────────────────── */}
+        {/* TOKENS */}
         {tab === "balances" && (
           <div style={{ flex: 1, overflow: "auto" }}>
-            {/* Table header */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "2fr 1fr 1.5fr 1.5fr 1fr",
-              padding: "8px 20px",
-              borderBottom: "1px solid #1a2a1a",
-              background: "#030a03",
-              position: "sticky",
-              top: 0,
-            }}>
-              {["TOKEN", "CHAIN", "BALANCE", "VALUE_USD", "PRICE"].map((h) => (
-                <span key={h} style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.12em" }}>{h}</span>
-              ))}
-            </div>
+            <TH cols={["TOKEN", "CHAIN", "BALANCE", "VALUE_USD", "PRICE_USD"]} />
             {loading
               ? Array.from({ length: 12 }).map((_, i) => <SkeletonRow key={i} cols={5} />)
               : (balances || []).length === 0
               ? <Empty msg="NO_TOKENS_FOUND" />
-              : (balances || [])
-                  .sort((a, b) => (b.balance_usd || 0) - (a.balance_usd || 0))
-                  .map((t, i) => (
-                    <div
-                      key={`${t.chain}-${t.address}-${i}`}
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "2fr 1fr 1.5fr 1.5fr 1fr",
-                        padding: "10px 20px",
-                        borderBottom: "1px solid #0a150a",
-                        transition: "background 0.1s",
-                        cursor: "default",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#0a150a")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        {t.logo_url && (
-                          <img src={t.logo_url} alt="" width={16} height={16}
-                            style={{ borderRadius: "50%", opacity: 0.85 }}
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                        )}
-                        <span style={{ color: "#00FF88", fontSize: "13px", fontWeight: "bold" }}>{t.symbol}</span>
-                        <span style={{ color: "#336633", fontSize: "10px" }}>{t.name?.slice(0, 20)}</span>
-                      </div>
-                      <span style={{ color: "#00E5FF", fontSize: "11px", textTransform: "uppercase" }}>
-                        {t.chain?.slice(0, 10)}
-                      </span>
-                      <span style={{ color: "#88BB88", fontSize: "12px", fontFamily: "monospace" }}>
-                        {parseFloat(t.balance).toFixed(4)}
-                      </span>
-                      <span style={{
-                        fontSize: "13px",
-                        color: (t.balance_usd || 0) > 100 ? "#00FF88" : "#88BB88",
-                        fontWeight: "bold",
-                      }}>
-                        {fmt(t.balance_usd)}
-                      </span>
-                      <span style={{ color: "#555", fontSize: "11px" }}>
-                        {t.price_usd ? `$${t.price_usd.toFixed(4)}` : "—"}
-                      </span>
-                    </div>
-                  ))}
-          </div>
-        )}
-
-        {/* ── ACTIVITY ──────────────────────────────────────────────── */}
-        {tab === "activity" && (
-          <div style={{ flex: 1, overflow: "auto" }}>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "80px 100px 1fr 1fr 1fr 100px",
-              padding: "8px 20px",
-              borderBottom: "1px solid #1a2a1a",
-              background: "#030a03",
-              position: "sticky",
-              top: 0,
-            }}>
-              {["AGE", "TYPE", "FROM", "TO", "AMOUNT", "VALUE"].map((h) => (
-                <span key={h} style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.12em" }}>{h}</span>
-              ))}
-            </div>
-            {loading
-              ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cols={6} />)
-              : (activity || []).length === 0
-              ? <Empty msg="NO_ACTIVITY_FOUND" />
-              : (activity || []).map((a, i) => (
-                  <div
-                    key={`${a.hash}-${i}`}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "80px 100px 1fr 1fr 1fr 100px",
-                      padding: "10px 20px",
-                      borderBottom: "1px solid #0a150a",
-                      alignItems: "center",
-                    }}
+              : [...(balances || [])].sort((a, b) => (b.balance_usd || 0) - (a.balance_usd || 0)).map((t, i) => (
+                  <div key={`${t.chain}-${t.address}-${i}`}
+                    style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", padding: "10px 20px", borderBottom: "1px solid #0a150a", cursor: "default" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#0a150a")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
-                    <span style={{ color: "#336633", fontSize: "11px" }}>{ago(a.block_time)}</span>
-                    <span style={{
-                      fontSize: "11px",
-                      fontWeight: "bold",
-                      color: actColor(a.activity_type),
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}>
-                      {a.activity_type}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      {t.logo_url && (
+                        <img src={t.logo_url} alt="" width={14} height={14} style={{ borderRadius: "50%", opacity: 0.8 }}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      )}
+                      <span style={{ color: "#00FF88", fontSize: "12px", fontWeight: "bold" }}>{t.symbol}</span>
+                      <span style={{ color: "#1a3a1a", fontSize: "10px" }}>{t.name?.slice(0, 16)}</span>
+                    </div>
+                    <span style={{ color: "#00E5FF", fontSize: "11px", textTransform: "uppercase", alignSelf: "center" }}>{t.chain?.slice(0, 12)}</span>
+                    <span style={{ color: "#88BB88", fontSize: "12px", fontFamily: "monospace", alignSelf: "center" }}>
+                      {fmtBalance(t.balance, t.decimals ?? 18)}
                     </span>
-                    <span style={{ color: "#88BB88", fontSize: "11px", fontFamily: "monospace" }}>
-                      {short(a.from)}
+                    <span style={{ fontSize: "13px", color: (t.balance_usd || 0) > 100 ? "#00FF88" : "#88BB88", fontWeight: "bold", alignSelf: "center" }}>
+                      {fmt(t.balance_usd)}
                     </span>
-                    <span style={{ color: "#88BB88", fontSize: "11px", fontFamily: "monospace" }}>
-                      {a.to ? short(a.to) : "—"}
-                    </span>
-                    <span style={{ color: "#AAAAAA", fontSize: "11px" }}>
-                      {a.amount ? `${parseFloat(a.amount).toFixed(4)} ${a.token_symbol || ""}` : "—"}
-                    </span>
-                    <span style={{ color: "#00FF88", fontSize: "11px" }}>
-                      {fmt(a.amount_usd)}
+                    <span style={{ color: "#555", fontSize: "11px", alignSelf: "center" }}>
+                      {t.price_usd ? `$${t.price_usd.toFixed(4)}` : "—"}
                     </span>
                   </div>
                 ))}
           </div>
         )}
 
-        {/* ── NFTs ──────────────────────────────────────────────────── */}
+        {/* ACTIVITY */}
+        {tab === "activity" && (
+          <div style={{ flex: 1, overflow: "auto" }}>
+            <TH cols={["AGE", "TYPE", "FROM", "TO", "AMOUNT", "VALUE_USD"]} />
+            {loading
+              ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cols={6} />)
+              : (activity || []).length === 0
+              ? <Empty msg="NO_ACTIVITY_FOUND" />
+              : (activity || []).map((a, i) => (
+                  <div key={`${a.hash}-${i}`}
+                    style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", padding: "10px 20px", borderBottom: "1px solid #0a150a", alignItems: "center" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#0a150a")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <span style={{ color: "#336633", fontSize: "11px" }}>{ago(a.block_time)}</span>
+                    <span style={{ fontSize: "11px", fontWeight: "bold", color: actColor(a.activity_type), textTransform: "uppercase" }}>{a.activity_type}</span>
+                    <span style={{ color: "#88BB88", fontSize: "11px", fontFamily: "monospace" }}>{short(a.from)}</span>
+                    <span style={{ color: "#88BB88", fontSize: "11px", fontFamily: "monospace" }}>{a.to ? short(a.to) : "—"}</span>
+                    <span style={{ color: "#AAAAAA", fontSize: "11px" }}>
+                      {a.amount ? `${parseFloat(a.amount).toFixed(4)} ${a.token_symbol || ""}` : "—"}
+                    </span>
+                    <span style={{ color: "#00FF88", fontSize: "11px" }}>{fmt(a.amount_usd)}</span>
+                  </div>
+                ))}
+          </div>
+        )}
+
+        {/* NFTs */}
         {tab === "nfts" && (
           <div style={{ flex: 1, overflow: "auto", padding: "16px 20px" }}>
             {loading ? (
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-                gap: "12px",
-              }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" }}>
                 {Array.from({ length: 12 }).map((_, i) => (
-                  <div key={i} style={{
-                    height: "200px",
-                    background: "#0a150a",
-                    border: "1px solid #1a2a1a",
-                    borderRadius: "4px",
-                    animation: "shimmer 1.5s infinite",
-                  }} />
+                  <div key={i} style={{ height: "200px", background: "#0a150a", border: "1px solid #1a2a1a", animation: "shimmer 1.5s infinite" }} />
                 ))}
               </div>
-            ) : (nfts || []).length === 0 ? (
-              <Empty msg="NO_NFTs_FOUND" />
-            ) : (
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-                gap: "12px",
-              }}>
+            ) : (nfts || []).length === 0 ? <Empty msg="NO_NFTs_FOUND" /> : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px" }}>
                 {(nfts || []).map((n, i) => (
-                  <div
-                    key={`${n.contract_address}-${n.token_id}-${i}`}
-                    style={{
-                      border: "1px solid #1a2a1a",
-                      background: "#040a04",
-                      transition: "border-color 0.15s",
-                      cursor: "default",
-                    }}
+                  <div key={`${n.contract_address}-${n.token_id}-${i}`}
+                    style={{ border: "1px solid #1a2a1a", background: "#040a04", transition: "border-color 0.15s", cursor: "default" }}
                     onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#00FF88")}
                     onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a2a1a")}
                   >
-                    <div style={{
-                      width: "100%",
-                      aspectRatio: "1",
-                      background: "#0a150a",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      overflow: "hidden",
-                      position: "relative",
-                    }}>
-                      {n.image_url ? (
-                        <img src={n.image_url} alt={n.name || "NFT"} style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                      ) : (
-                        <span style={{ fontSize: "32px", color: "#1a3a1a" }}>◈</span>
-                      )}
-                      <div style={{
-                        position: "absolute", top: "6px", right: "6px",
-                        background: "#00E5FF22",
-                        border: "1px solid #00E5FF44",
-                        padding: "2px 6px",
-                        fontSize: "9px",
-                        color: "#00E5FF",
-                        fontFamily: "monospace",
-                      }}>
+                    <div style={{ width: "100%", aspectRatio: "1", background: "#0a150a", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative" }}>
+                      {n.image_url
+                        ? <img src={n.image_url} alt={n.name || "NFT"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        : <span style={{ fontSize: "28px", color: "#1a3a1a" }}>◈</span>
+                      }
+                      <div style={{ position: "absolute", top: "4px", right: "4px", background: "#00E5FF22", border: "1px solid #00E5FF44", padding: "2px 5px", fontSize: "8px", color: "#00E5FF", fontFamily: "monospace" }}>
                         #{n.token_id.slice(0, 8)}
                       </div>
                     </div>
                     <div style={{ padding: "10px" }}>
-                      <div style={{ fontSize: "11px", color: "#00FF88", fontWeight: "bold", marginBottom: "2px" }}>
-                        {n.name?.slice(0, 20) || "Unnamed"}
-                      </div>
-                      <div style={{ fontSize: "9px", color: "#336633" }}>
-                        {n.collection_name?.slice(0, 22) || short(n.contract_address)}
-                      </div>
-                      <div style={{ fontSize: "9px", color: "#00E5FF", marginTop: "4px", textTransform: "uppercase" }}>
-                        {n.chain}
-                      </div>
+                      <div style={{ fontSize: "11px", color: "#00FF88", fontWeight: "bold", marginBottom: "2px" }}>{n.name?.slice(0, 18) || "Unnamed"}</div>
+                      <div style={{ fontSize: "9px", color: "#336633" }}>{n.collection_name?.slice(0, 20) || short(n.contract_address)}</div>
+                      <div style={{ fontSize: "9px", color: "#00E5FF", marginTop: "4px", textTransform: "uppercase" }}>{n.chain}</div>
                     </div>
                   </div>
                 ))}
@@ -578,115 +646,64 @@ export default function WalletPage() {
           </div>
         )}
 
-        {/* ── TRANSACTIONS ──────────────────────────────────────────── */}
+        {/* TRANSACTIONS */}
         {tab === "transactions" && (
           <div style={{ flex: 1, overflow: "auto" }}>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "80px 100px 1fr 1fr 120px 80px",
-              padding: "8px 20px",
-              borderBottom: "1px solid #1a2a1a",
-              background: "#030a03",
-              position: "sticky",
-              top: 0,
-            }}>
-              {["AGE", "STATUS", "FROM", "TO", "METHOD", "CHAIN"].map((h) => (
-                <span key={h} style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.12em" }}>{h}</span>
-              ))}
-            </div>
+            <TH cols={["AGE", "STATUS", "FROM", "TO", "METHOD", "CHAIN"]} />
             {loading
               ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cols={6} />)
               : (txns || []).length === 0
               ? <Empty msg="NO_TRANSACTIONS_FOUND" />
               : (txns || []).map((t, i) => (
-                  <div
-                    key={`${t.hash}-${i}`}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "80px 100px 1fr 1fr 120px 80px",
-                      padding: "10px 20px",
-                      borderBottom: "1px solid #0a150a",
-                      alignItems: "center",
-                    }}
+                  <div key={`${t.hash}-${i}`}
+                    style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", padding: "10px 20px", borderBottom: "1px solid #0a150a", alignItems: "center" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#0a150a")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
                     <span style={{ color: "#336633", fontSize: "11px" }}>{ago(t.block_time)}</span>
-                    <span style={{
-                      fontSize: "11px",
-                      color: t.status === "success" ? "#00FF88" : "#FF4466",
-                      fontWeight: "bold",
-                      textTransform: "uppercase",
-                    }}>
+                    <span style={{ fontSize: "11px", color: t.status === "success" ? "#00FF88" : "#FF4466", fontWeight: "bold" }}>
                       {t.status === "success" ? "✓ OK" : "✗ FAIL"}
                     </span>
                     <span style={{ color: "#88BB88", fontSize: "11px", fontFamily: "monospace" }}>{short(t.from)}</span>
-                    <span style={{ color: "#88BB88", fontSize: "11px", fontFamily: "monospace" }}>
-                      {t.to ? short(t.to) : "CONTRACT_DEPLOY"}
-                    </span>
-                    <span style={{
-                      color: "#FFAA00",
-                      fontSize: "10px",
-                      fontFamily: "monospace",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}>
+                    <span style={{ color: "#88BB88", fontSize: "11px", fontFamily: "monospace" }}>{t.to ? short(t.to) : "CONTRACT_DEPLOY"}</span>
+                    <span style={{ color: "#FFAA00", fontSize: "10px", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {t.method || "transfer()"}
                     </span>
-                    <span style={{ color: "#00E5FF", fontSize: "10px", textTransform: "uppercase" }}>
-                      {t.chain?.slice(0, 8)}
-                    </span>
+                    <span style={{ color: "#00E5FF", fontSize: "10px", textTransform: "uppercase" }}>{t.chain?.slice(0, 8)}</span>
                   </div>
                 ))}
+          </div>
+        )}
+
+        {/* AI INSIGHTS */}
+        {tab === "ai" && (
+          <div style={{ flex: 1, overflow: "auto" }}>
+            <AIInsights address={address} balances={balances} activity={activity} nfts={nfts} />
           </div>
         )}
       </div>
 
       {/* Footer */}
       <div style={{
+        position: "relative", zIndex: 10,
         padding: "8px 20px",
         borderTop: "1px solid #1a2a1a",
         background: "#030703",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
         flexShrink: 0,
       }}>
-        <span style={{ fontSize: "10px", color: "#1a3a1a" }}>
-          DATA_SOURCE: DUNE_SIM_API | LATENCY: REAL_TIME | CHAINS: 60+
-        </span>
-        <span style={{ fontSize: "10px", color: "#1a3a1a" }}>
-          CHAIN<span style={{ color: "#00E5FF" }}>VISION</span>_v1.0.0
-        </span>
+        <span style={{ fontSize: "10px", color: "#1a3a1a" }}>DATA_SOURCE: DUNE_SIM_API | CHAINS: 60+ | LATENCY: REAL_TIME</span>
+        <span style={{ fontSize: "10px", color: "#1a3a1a" }}>CHAIN<span style={{ color: "#00E5FF" }}>VISION</span>_v1.0.0</span>
       </div>
 
       <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
+        @keyframes shimmer { 0%,100% { opacity:0.5; } 50% { opacity:1; } }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #020502; }
         ::-webkit-scrollbar-thumb { background: #1a3a1a; border-radius: 2px; }
-        ::-webkit-scrollbar-thumb:hover { background: #00FF8844; }
+        ::-webkit-scrollbar-thumb:hover { background: #00FF8833; }
       `}</style>
-    </div>
-  );
-}
-
-function Empty({ msg }: { msg: string }) {
-  return (
-    <div style={{
-      padding: "60px",
-      textAlign: "center",
-      color: "#1a3a1a",
-      fontFamily: "monospace",
-      fontSize: "13px",
-      letterSpacing: "0.1em",
-    }}>
-      [ {msg} ]
     </div>
   );
 }
