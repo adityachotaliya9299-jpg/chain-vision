@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import WalletScore from "@/components/WalletScore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface TokenBalance {
@@ -138,216 +139,216 @@ function TH({ cols }: { cols: string[] }) {
 }
 
 // ─── AI Insights ──────────────────────────────────────────────────────────────
-function AIInsights({ address, balances, activity, nfts }: {
-  address: string;
-  balances: TokenBalance[] | null;
-  activity: ActivityItem[] | null;
-  nfts: NFTItem[] | null;
-}) {
-  const [insight, setInsight] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = useState(true);
+// function AIInsights({ address, balances, activity, nfts }: {
+//   address: string;
+//   balances: TokenBalance[] | null;
+//   activity: ActivityItem[] | null;
+//   nfts: NFTItem[] | null;
+// }) {
+//   const [insight, setInsight] = useState<string | null>(null);
+//   const [loading, setLoading] = useState(false);
+//   const [error, setError] = useState<string | null>(null);
+//   const [tick, setTick] = useState(true);
 
-  useEffect(() => {
-    const t = setInterval(() => setTick((p) => !p), 400);
-    return () => clearInterval(t);
-  }, []);
+//   useEffect(() => {
+//     const t = setInterval(() => setTick((p) => !p), 400);
+//     return () => clearInterval(t);
+//   }, []);
 
-  const runAnalysis = async () => {
-    setLoading(true);
-    setError(null);
-    setInsight(null);
+//   const runAnalysis = async () => {
+//     setLoading(true);
+//     setError(null);
+//     setInsight(null);
 
-    const totalUSD = (balances || []).reduce((s, b) => s + (b.balance_usd || 0), 0);
-    const chains = [...new Set((balances || []).map((b) => b.chain))];
-    const topTokens = [...(balances || [])]
-      .sort((a, b) => (b.balance_usd || 0) - (a.balance_usd || 0))
-      .slice(0, 5)
-      .map((b) => `${b.symbol} ($${(b.balance_usd || 0).toFixed(0)} on ${b.chain})`);
-    const actTypes = (activity || []).reduce((acc: Record<string, number>, a) => {
-      acc[a.activity_type] = (acc[a.activity_type] || 0) + 1;
-      return acc;
-    }, {});
+//     const totalUSD = (balances || []).reduce((s, b) => s + (b.balance_usd || 0), 0);
+//     const chains = [...new Set((balances || []).map((b) => b.chain))];
+//     const topTokens = [...(balances || [])]
+//       .sort((a, b) => (b.balance_usd || 0) - (a.balance_usd || 0))
+//       .slice(0, 5)
+//       .map((b) => `${b.symbol} ($${(b.balance_usd || 0).toFixed(0)} on ${b.chain})`);
+//     const actTypes = (activity || []).reduce((acc: Record<string, number>, a) => {
+//       acc[a.activity_type] = (acc[a.activity_type] || 0) + 1;
+//       return acc;
+//     }, {});
 
-    const prompt = `You are a blockchain intelligence analyst. Analyze this wallet and write a concise report.
+//     const prompt = `You are a blockchain intelligence analyst. Analyze this wallet and write a concise report.
 
-WALLET: ${address}
-TOTAL_VALUE_USD: $${totalUSD.toFixed(2)}
-ACTIVE_CHAINS: ${chains.join(", ") || "unknown"}
-TOKEN_COUNT: ${balances?.length || 0}
-TOP_TOKENS: ${topTokens.join(" | ") || "none"}
-RECENT_ACTIVITY: ${JSON.stringify(actTypes)}
-NFTs_OWNED: ${nfts?.length || 0}
+// WALLET: ${address}
+// TOTAL_VALUE_USD: $${totalUSD.toFixed(2)}
+// ACTIVE_CHAINS: ${chains.join(", ") || "unknown"}
+// TOKEN_COUNT: ${balances?.length || 0}
+// TOP_TOKENS: ${topTokens.join(" | ") || "none"}
+// RECENT_ACTIVITY: ${JSON.stringify(actTypes)}
+// NFTs_OWNED: ${nfts?.length || 0}
 
-Write a terminal-style intelligence report with EXACTLY these sections in this format:
-[WALLET_PROFILE]
-2-3 sentences about what type of wallet this is.
+// Write a terminal-style intelligence report with EXACTLY these sections in this format:
+// [WALLET_PROFILE]
+// 2-3 sentences about what type of wallet this is.
 
-[CHAIN_BEHAVIOR]
-2-3 sentences about which chains they use and why.
+// [CHAIN_BEHAVIOR]
+// 2-3 sentences about which chains they use and why.
 
-[ASSET_STRATEGY]
-2-3 sentences about their portfolio composition.
+// [ASSET_STRATEGY]
+// 2-3 sentences about their portfolio composition.
 
-[ACTIVITY_PATTERN]
-2-3 sentences about their trading/usage patterns.
+// [ACTIVITY_PATTERN]
+// 2-3 sentences about their trading/usage patterns.
 
-[RISK_ASSESSMENT]
-2-3 sentences about risks or notable observations.
+// [RISK_ASSESSMENT]
+// 2-3 sentences about risks or notable observations.
 
-[SUMMARY]
-One sharp sentence verdict on this wallet.
+// [SUMMARY]
+// One sharp sentence verdict on this wallet.
 
-Be specific, use the data provided, write like a professional analyst.`;
+// Be specific, use the data provided, write like a professional analyst.`;
 
-    try {
-      const res = await fetch("/api/ai-insights", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
+//     try {
+//       const res = await fetch("/api/ai-insights", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ prompt }),
+//       });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`API ${res.status}: ${errText}`);
-      }
+//       if (!res.ok) {
+//         const errText = await res.text();
+//         throw new Error(`API ${res.status}: ${errText}`);
+//       }
 
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setInsight(data.insight);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "AI analysis failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+//       const data = await res.json();
+//       if (data.error) throw new Error(data.error);
+//       setInsight(data.insight);
+//     } catch (e: unknown) {
+//       setError(e instanceof Error ? e.message : "AI analysis failed");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
 
-  // Parse sections from AI response
-  const sections: Array<{ title: string; text: string }> = [];
-  if (insight) {
-    const matches = [...insight.matchAll(/\[([A-Z_]+)\]\s*([\s\S]*?)(?=\[[A-Z_]+\]|$)/g)];
-    for (const m of matches) {
-      if (m[1] && m[2]) sections.push({ title: m[1].trim(), text: m[2].trim() });
-    }
-  }
+//   // Parse sections from AI response
+//   const sections: Array<{ title: string; text: string }> = [];
+//   if (insight) {
+//     const matches = [...insight.matchAll(/\[([A-Z_]+)\]\s*([\s\S]*?)(?=\[[A-Z_]+\]|$)/g)];
+//     for (const m of matches) {
+//       if (m[1] && m[2]) sections.push({ title: m[1].trim(), text: m[2].trim() });
+//     }
+//   }
 
-  const sectionColors: Record<string, string> = {
-    WALLET_PROFILE: "#00FF88",
-    CHAIN_BEHAVIOR: "#00E5FF",
-    ASSET_STRATEGY: "#FFAA00",
-    ACTIVITY_PATTERN: "#A78BFA",
-    RISK_ASSESSMENT: "#FF6B6B",
-    SUMMARY: "#34D399",
-  };
+//   const sectionColors: Record<string, string> = {
+//     WALLET_PROFILE: "#00FF88",
+//     CHAIN_BEHAVIOR: "#00E5FF",
+//     ASSET_STRATEGY: "#FFAA00",
+//     ACTIVITY_PATTERN: "#A78BFA",
+//     RISK_ASSESSMENT: "#FF6B6B",
+//     SUMMARY: "#34D399",
+//   };
 
-  return (
-    <div style={{ padding: "24px 20px", maxWidth: "900px" }}>
+//   return (
+//     <div style={{ padding: "24px 20px", maxWidth: "900px" }}>
 
-      {/* Initial state — show launch button */}
-      {!insight && !loading && !error && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em" }}>
-            ROOT@CHAINVISION:~$ RUN_AI_ANALYSIS --model gemini-1.5-flash
-          </div>
-          <div style={{ border: "1px solid #1a3a1a", background: "#030a03", padding: "24px" }}>
-            <div style={{ fontSize: "12px", color: "#336633", lineHeight: 1.9, marginBottom: "20px" }}>
-              <span style={{ color: "#1a3a1a" }}>//</span> This module uses Google Gemini AI to analyze on-chain data<br />
-              <span style={{ color: "#1a3a1a" }}>//</span> and generate a comprehensive intelligence report.<br />
-              <span style={{ color: "#1a3a1a" }}>//</span> Data loaded: {" "}
-              <span style={{ color: "#00FF88" }}>{balances?.length ?? 0} tokens</span>{" · "}
-              <span style={{ color: "#00E5FF" }}>{activity?.length ?? 0} activities</span>{" · "}
-              <span style={{ color: "#A78BFA" }}>{nfts?.length ?? 0} NFTs</span>
-            </div>
-            <button
-              onClick={runAnalysis}
-              style={{
-                background: "#00FF88", color: "#020502",
-                border: "none", padding: "12px 32px",
-                fontFamily: "monospace", fontSize: "13px",
-                fontWeight: "bold", letterSpacing: "0.12em",
-                cursor: "pointer",
-                transition: "opacity 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-            >
-              ▶ EXECUTE_AI_ANALYSIS
-            </button>
-          </div>
-        </div>
-      )}
+//       {/* Initial state — show launch button */}
+//       {!insight && !loading && !error && (
+//         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+//           <div style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em" }}>
+//             ROOT@CHAINVISION:~$ RUN_AI_ANALYSIS --model gemini-1.5-flash
+//           </div>
+//           <div style={{ border: "1px solid #1a3a1a", background: "#030a03", padding: "24px" }}>
+//             <div style={{ fontSize: "12px", color: "#336633", lineHeight: 1.9, marginBottom: "20px" }}>
+//               <span style={{ color: "#1a3a1a" }}>//</span> This module uses Google Gemini AI to analyze on-chain data<br />
+//               <span style={{ color: "#1a3a1a" }}>//</span> and generate a comprehensive intelligence report.<br />
+//               <span style={{ color: "#1a3a1a" }}>//</span> Data loaded: {" "}
+//               <span style={{ color: "#00FF88" }}>{balances?.length ?? 0} tokens</span>{" · "}
+//               <span style={{ color: "#00E5FF" }}>{activity?.length ?? 0} activities</span>{" · "}
+//               <span style={{ color: "#A78BFA" }}>{nfts?.length ?? 0} NFTs</span>
+//             </div>
+//             <button
+//               onClick={runAnalysis}
+//               style={{
+//                 background: "#00FF88", color: "#020502",
+//                 border: "none", padding: "12px 32px",
+//                 fontFamily: "monospace", fontSize: "13px",
+//                 fontWeight: "bold", letterSpacing: "0.12em",
+//                 cursor: "pointer",
+//                 transition: "opacity 0.15s",
+//               }}
+//               onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+//               onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+//             >
+//               ▶ EXECUTE_AI_ANALYSIS
+//             </button>
+//           </div>
+//         </div>
+//       )}
 
-      {/* Loading state */}
-      {loading && (
-        <div>
-          <div style={{ fontSize: "11px", color: "#336633", letterSpacing: "0.12em", marginBottom: "20px" }}>
-            QUERYING_GEMINI_AI{tick ? "█" : " "}
-          </div>
-          {["WALLET_PROFILE", "CHAIN_BEHAVIOR", "ASSET_STRATEGY", "ACTIVITY_PATTERN", "RISK_ASSESSMENT", "SUMMARY"].map((s) => (
-            <div key={s} style={{ borderBottom: "1px solid #0d1a0d", padding: "18px 0" }}>
-              <div style={{ fontSize: "10px", color: "#1a3a1a", letterSpacing: "0.12em", marginBottom: "10px" }}>[{s}]</div>
-              <div style={{ height: "10px", background: "#0d1a0d", borderRadius: "2px", animation: "shimmer 1.5s infinite", maxWidth: "500px", marginBottom: "6px" }} />
-              <div style={{ height: "10px", background: "#0d1a0d", borderRadius: "2px", animation: "shimmer 1.5s infinite", maxWidth: "380px" }} />
-            </div>
-          ))}
-        </div>
-      )}
+//       {/* Loading state */}
+//       {loading && (
+//         <div>
+//           <div style={{ fontSize: "11px", color: "#336633", letterSpacing: "0.12em", marginBottom: "20px" }}>
+//             QUERYING_GEMINI_AI{tick ? "█" : " "}
+//           </div>
+//           {["WALLET_PROFILE", "CHAIN_BEHAVIOR", "ASSET_STRATEGY", "ACTIVITY_PATTERN", "RISK_ASSESSMENT", "SUMMARY"].map((s) => (
+//             <div key={s} style={{ borderBottom: "1px solid #0d1a0d", padding: "18px 0" }}>
+//               <div style={{ fontSize: "10px", color: "#1a3a1a", letterSpacing: "0.12em", marginBottom: "10px" }}>[{s}]</div>
+//               <div style={{ height: "10px", background: "#0d1a0d", borderRadius: "2px", animation: "shimmer 1.5s infinite", maxWidth: "500px", marginBottom: "6px" }} />
+//               <div style={{ height: "10px", background: "#0d1a0d", borderRadius: "2px", animation: "shimmer 1.5s infinite", maxWidth: "380px" }} />
+//             </div>
+//           ))}
+//         </div>
+//       )}
 
-      {/* Error state */}
-      {error && !loading && (
-        <div style={{ border: "1px solid #550000", background: "#1a0505", padding: "20px" }}>
-          <div style={{ color: "#FF4466", fontSize: "12px", marginBottom: "12px", letterSpacing: "0.06em" }}>
-            ERROR: {error}
-          </div>
-          <button
-            onClick={runAnalysis}
-            style={{ background: "none", border: "1px solid #FF4466", color: "#FF4466", fontFamily: "monospace", fontSize: "11px", padding: "6px 16px", cursor: "pointer" }}
-          >
-            ↻ RETRY
-          </button>
-        </div>
-      )}
+//       {/* Error state */}
+//       {error && !loading && (
+//         <div style={{ border: "1px solid #550000", background: "#1a0505", padding: "20px" }}>
+//           <div style={{ color: "#FF4466", fontSize: "12px", marginBottom: "12px", letterSpacing: "0.06em" }}>
+//             ERROR: {error}
+//           </div>
+//           <button
+//             onClick={runAnalysis}
+//             style={{ background: "none", border: "1px solid #FF4466", color: "#FF4466", fontFamily: "monospace", fontSize: "11px", padding: "6px 16px", cursor: "pointer" }}
+//           >
+//             ↻ RETRY
+//           </button>
+//         </div>
+//       )}
 
-      {/* Results */}
-      {sections.length > 0 && !loading && (
-        <div>
-          <div style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em", marginBottom: "24px" }}>
-            ── AI_ANALYSIS_COMPLETE ── MODEL: GEMINI-1.5-FLASH ────────────────
-          </div>
-          {sections.map((s) => (
-            <div key={s.title} style={{ borderBottom: "1px solid #0d1a0d", padding: "20px 0" }}>
-              <div style={{
-                fontSize: "10px", fontWeight: "bold",
-                color: sectionColors[s.title] || "#00FF88",
-                letterSpacing: "0.15em", marginBottom: "10px",
-              }}>
-                [{s.title}]
-              </div>
-              <div style={{ fontSize: "13px", color: "#88BB88", lineHeight: 1.8, maxWidth: "700px" }}>
-                {s.text}
-              </div>
-            </div>
-          ))}
-          <div style={{ marginTop: "24px" }}>
-            <button
-              onClick={runAnalysis}
-              style={{
-                background: "transparent", border: "1px solid #1a3a1a",
-                color: "#336633", fontFamily: "monospace", fontSize: "10px",
-                padding: "8px 20px", cursor: "pointer", letterSpacing: "0.08em",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "#00FF88"; e.currentTarget.style.borderColor = "#00FF88"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "#336633"; e.currentTarget.style.borderColor = "#1a3a1a"; }}
-            >
-              ↻ RE_RUN_ANALYSIS
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+//       {/* Results */}
+//       {sections.length > 0 && !loading && (
+//         <div>
+//           <div style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em", marginBottom: "24px" }}>
+//             ── AI_ANALYSIS_COMPLETE ── MODEL: GEMINI-1.5-FLASH ────────────────
+//           </div>
+//           {sections.map((s) => (
+//             <div key={s.title} style={{ borderBottom: "1px solid #0d1a0d", padding: "20px 0" }}>
+//               <div style={{
+//                 fontSize: "10px", fontWeight: "bold",
+//                 color: sectionColors[s.title] || "#00FF88",
+//                 letterSpacing: "0.15em", marginBottom: "10px",
+//               }}>
+//                 [{s.title}]
+//               </div>
+//               <div style={{ fontSize: "13px", color: "#88BB88", lineHeight: 1.8, maxWidth: "700px" }}>
+//                 {s.text}
+//               </div>
+//             </div>
+//           ))}
+//           <div style={{ marginTop: "24px" }}>
+//             <button
+//               onClick={runAnalysis}
+//               style={{
+//                 background: "transparent", border: "1px solid #1a3a1a",
+//                 color: "#336633", fontFamily: "monospace", fontSize: "10px",
+//                 padding: "8px 20px", cursor: "pointer", letterSpacing: "0.08em",
+//               }}
+//               onMouseEnter={(e) => { e.currentTarget.style.color = "#00FF88"; e.currentTarget.style.borderColor = "#00FF88"; }}
+//               onMouseLeave={(e) => { e.currentTarget.style.color = "#336633"; e.currentTarget.style.borderColor = "#1a3a1a"; }}
+//             >
+//               ↻ RE_RUN_ANALYSIS
+//             </button>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
 
 // ─── Main Wallet Page ─────────────────────────────────────────────────────────
 export default function WalletPage() {
@@ -645,11 +646,17 @@ export default function WalletPage() {
         )}
 
         {/* AI INSIGHTS */}
-        {tab === "ai" && (
-          <div style={{ flex: 1, overflow: "auto" }}>
-            <AIInsights address={address} balances={balances} activity={activity} nfts={nfts} />
-          </div>
-        )}
+       {tab === "ai" && (
+  <div style={{ flex: 1, overflow: "auto" }}>
+    <WalletScore
+      address={address}
+      balances={balances}
+      activity={activity}
+      nfts={nfts}
+      transactions={txns}
+    />
+  </div>
+)}
       </div>
 
       {/* Footer */}
