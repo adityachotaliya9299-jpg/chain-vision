@@ -1,65 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const DEMO_WALLETS = [
-  { label: "Vitalik.eth", address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
-  { label: "Binance", address: "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8" },
-  { label: "Uniswap", address: "0x1a9C8182C09F50C8318d769245beA52c32BE35BC" },
+  { label: "vitalik.eth", address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
+  { label: "binance_hot", address: "0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8" },
+  { label: "uniswap_dao", address: "0x1a9C8182C09F50C8318d769245beA52c32BE35BC" },
 ];
 
 const FEATURES = [
-  {
-    emoji: "💰",
-    title: "Token Balances",
-    desc: "Native + ERC-20 assets across 60+ chains with live USD pricing",
-    color: "#00E5FF",
-  },
-  {
-    emoji: "🖼️",
-    title: "NFT Portfolio",
-    desc: "ERC-721 & ERC-1155 collectibles with metadata and rarity",
-    color: "#A78BFA",
-  },
-  {
-    emoji: "⚡",
-    title: "Live Activity",
-    desc: "Real-time swaps, transfers & approvals decoded and classified",
-    color: "#34D399",
-  },
-  {
-    emoji: "🏦",
-    title: "DeFi Positions",
-    desc: "Lending, liquidity pools & staking across all major protocols",
-    color: "#FB923C",
-  },
-  {
-    emoji: "🤖",
-    title: "AI Insights",
-    desc: "Claude-powered on-chain behavior analysis and wallet summary",
-    color: "#F472B6",
-  },
-  {
-    emoji: "📋",
-    title: "Transactions",
-    desc: "Full decoded transaction history with gas cost analytics",
-    color: "#FBBF24",
-  },
+  { key: "TOKEN_BALANCES", desc: "Native + ERC-20 assets across 60+ chains with live USD pricing", color: "#00FF88" },
+  { key: "NFT_PORTFOLIO", desc: "ERC-721 & ERC-1155 collectibles with metadata and collection info", color: "#00E5FF" },
+  { key: "LIVE_ACTIVITY", desc: "Real-time swaps, transfers and approvals decoded and classified", color: "#FFAA00" },
+  { key: "DEFI_POSITIONS", desc: "Lending, liquidity pools and staking across major protocols", color: "#FF6B6B" },
+  { key: "AI_INSIGHTS", desc: "Claude-powered on-chain behavior analysis and wallet profiling", color: "#A78BFA" },
+  { key: "TXN_HISTORY", desc: "Full decoded transaction log with gas cost analytics per chain", color: "#34D399" },
 ];
 
 const STATS = [
-  { value: "60+", label: "EVM Chains" },
-  { value: "<100ms", label: "Latency" },
-  { value: "Real-time", label: "Live Data" },
-  { value: "Free", label: "No Signup" },
+  { label: "CHAINS_SUPPORTED", value: "60+" },
+  { label: "AVG_LATENCY", value: "<100ms" },
+  { label: "DATA_SOURCE", value: "DUNE_SIM" },
+  { label: "INDEXER_REQUIRED", value: "FALSE" },
 ];
 
 export default function Home() {
   const [address, setAddress] = useState("");
   const [focused, setFocused] = useState(false);
+  const [tick, setTick] = useState(true);
+  const [typedText, setTypedText] = useState("");
   const [hoveredFeature, setHoveredFeature] = useState<string | null>(null);
   const router = useRouter();
+
+  const fullText = "MULTICHAIN_WALLET_INTELLIGENCE_TERMINAL";
+
+  useEffect(() => {
+    const cursorInterval = setInterval(() => setTick((p) => !p), 500);
+    return () => clearInterval(cursorInterval);
+  }, []);
+
+  useEffect(() => {
+    let i = 0;
+    const typeInterval = setInterval(() => {
+      if (i <= fullText.length) {
+        setTypedText(fullText.slice(0, i));
+        i++;
+      } else {
+        clearInterval(typeInterval);
+      }
+    }, 55);
+    return () => clearInterval(typeInterval);
+  }, []);
 
   const handleSearch = () => {
     const trimmed = address.trim();
@@ -70,146 +62,121 @@ export default function Home() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#060810",
-      color: "white",
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+      background: "#020502",
+      color: "#00FF88",
+      fontFamily: "'Courier New', Courier, monospace",
+      display: "flex",
+      flexDirection: "column",
       overflowX: "hidden",
     }}>
+      {/* Scanline overlay */}
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+        backgroundImage: "repeating-linear-gradient(0deg, rgba(0,255,136,0.015) 0px, rgba(0,255,136,0.015) 1px, transparent 1px, transparent 3px)",
+      }} />
 
-      {/* Ambient blobs */}
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-        <div style={{
-          position: "absolute", top: "-200px", left: "-100px",
-          width: "600px", height: "600px", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(0,229,255,0.12) 0%, transparent 70%)",
-        }} />
-        <div style={{
-          position: "absolute", top: "40%", right: "-150px",
-          width: "500px", height: "500px", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(123,47,255,0.1) 0%, transparent 70%)",
-        }} />
-        <div style={{
-          position: "absolute", bottom: "-100px", left: "35%",
-          width: "400px", height: "300px", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(167,139,250,0.07) 0%, transparent 70%)",
-        }} />
-        {/* Grid */}
-        <div style={{
-          position: "absolute", inset: 0,
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
-          backgroundSize: "80px 80px",
-        }} />
-      </div>
-
-      {/* Nav */}
-      <nav style={{
-        position: "relative", zIndex: 10,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "20px 40px",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-      }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{
-            width: "38px", height: "38px", borderRadius: "12px",
-            background: "linear-gradient(135deg, rgba(0,229,255,0.15), rgba(123,47,255,0.15))",
-            border: "1px solid rgba(0,229,255,0.3)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "18px",
-          }}>⬡</div>
-          <span style={{ fontSize: "18px", fontWeight: 800, letterSpacing: "-0.5px" }}>
-            Chain<span style={{ color: "#00E5FF" }}>Vision</span>
-          </span>
-        </div>
-
-        {/* Pill */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: "8px",
-          padding: "8px 16px", borderRadius: "999px",
-          background: "rgba(0,229,255,0.06)",
-          border: "1px solid rgba(0,229,255,0.2)",
-        }}>
-          <div style={{
-            width: "7px", height: "7px", borderRadius: "50%", background: "#00E5FF",
-            boxShadow: "0 0 8px #00E5FF",
-            animation: "pulse 2s ease-in-out infinite",
-          }} />
-          <span style={{ fontSize: "12px", color: "rgba(0,229,255,0.8)", fontFamily: "monospace" }}>
-            Powered by Dune SIM API
-          </span>
-        </div>
-      </nav>
-
-      {/* Hero */}
+      {/* Top bar */}
       <div style={{
         position: "relative", zIndex: 10,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "10px 24px",
+        borderBottom: "1px solid #1a2a1a",
+        background: "#030703",
+        flexShrink: 0,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <span style={{ fontSize: "14px", fontWeight: "bold", letterSpacing: "0.05em" }}>
+            CHAIN<span style={{ color: "#00E5FF" }}>VISION</span>
+          </span>
+          <span style={{ color: "#1a3a1a" }}>│</span>
+          <span style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em" }}>
+            {typedText}<span style={{ opacity: tick ? 1 : 0 }}>█</span>
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <span style={{ fontSize: "10px", color: "#336633" }}>
+            SIM_API: <span style={{ color: "#00FF88" }}>READY</span>
+          </span>
+          <span style={{ fontSize: "10px", color: "#336633" }}>
+            {new Date().toUTCString().slice(0, 25)}
+          </span>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div style={{
+        position: "relative", zIndex: 10,
+        flex: 1,
         display: "flex", flexDirection: "column", alignItems: "center",
-        padding: "80px 24px 60px",
+        padding: "60px 24px 48px",
       }}>
 
-        {/* Badge */}
+        {/* ASCII-style badge */}
         <div style={{
-          marginBottom: "32px",
-          padding: "8px 20px", borderRadius: "999px",
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          fontSize: "13px", color: "rgba(255,255,255,0.5)",
-          letterSpacing: "0.03em",
+          marginBottom: "40px",
+          padding: "6px 20px",
+          border: "1px solid #1a3a1a",
+          background: "#030a03",
+          fontSize: "11px", color: "#336633",
+          letterSpacing: "0.1em",
         }}>
-          🚀 &nbsp;Real-time multichain wallet intelligence — no indexer setup required
+          ▶ POWERED BY DUNE SIM API — 60+ EVM CHAINS — REAL-TIME DATA
         </div>
 
-        {/* Headline */}
-        <h1 style={{
-          textAlign: "center",
-          fontSize: "clamp(52px, 8vw, 92px)",
-          fontWeight: 900,
-          lineHeight: 1.0,
-          letterSpacing: "-3px",
-          marginBottom: "24px",
-        }}>
-          <span style={{ display: "block", color: "white" }}>See Every</span>
-          <span style={{
-            display: "block",
-            background: "linear-gradient(135deg, #00E5FF 0%, #7B2FFF 50%, #A78BFA 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
+        {/* Big headline */}
+        <div style={{ textAlign: "center", marginBottom: "16px" }}>
+          <div style={{
+            fontSize: "clamp(13px, 1.5vw, 15px)",
+            color: "#336633",
+            letterSpacing: "0.2em",
+            marginBottom: "12px",
           }}>
-            Chain. Every Move.
-          </span>
-        </h1>
+            [ INITIALIZE_WALLET_SCAN ]
+          </div>
+          <h1 style={{
+            fontSize: "clamp(40px, 7vw, 80px)",
+            fontWeight: 900,
+            letterSpacing: "-2px",
+            lineHeight: 1.0,
+            margin: 0,
+          }}>
+            <span style={{ display: "block", color: "#00FF88" }}>SEE_EVERY</span>
+            <span style={{ display: "block", color: "#00E5FF" }}>CHAIN.</span>
+            <span style={{ display: "block", color: "#00FF88" }}>EVERY_MOVE.</span>
+          </h1>
+        </div>
 
         <p style={{
           textAlign: "center",
-          fontSize: "18px",
-          color: "rgba(255,255,255,0.4)",
-          maxWidth: "500px",
-          lineHeight: 1.7,
-          marginBottom: "52px",
+          fontSize: "13px",
+          color: "#336633",
+          maxWidth: "480px",
+          lineHeight: 1.8,
+          marginBottom: "44px",
+          letterSpacing: "0.03em",
         }}>
-          Drop any wallet address and get a complete picture — token balances, NFTs, DeFi positions, live activity, and AI-generated insights.
+          // Drop any wallet address below to run a full on-chain intelligence report.<br />
+          // Tokens, NFTs, DeFi, activity history and AI analysis. Instantly.
         </p>
 
-        {/* Search box */}
-        <div style={{ width: "100%", maxWidth: "700px" }}>
+        {/* Search terminal */}
+        <div style={{ width: "100%", maxWidth: "680px", marginBottom: "12px" }}>
           <div style={{
-            display: "flex", alignItems: "center", gap: "8px",
-            padding: "8px",
-            borderRadius: "18px",
-            background: focused ? "rgba(0,229,255,0.05)" : "rgba(255,255,255,0.03)",
-            border: focused ? "1px solid rgba(0,229,255,0.5)" : "1px solid rgba(255,255,255,0.08)",
-            boxShadow: focused ? "0 0 50px rgba(0,229,255,0.08), 0 0 0 1px rgba(0,229,255,0.1)" : "none",
-            transition: "all 0.25s ease",
+            fontSize: "10px", color: "#336633",
+            letterSpacing: "0.12em", marginBottom: "6px",
           }}>
-            {/* Icon */}
-            <div style={{ padding: "0 8px 0 12px", flexShrink: 0 }}>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <circle cx="9" cy="9" r="6" stroke={focused ? "#00E5FF" : "rgba(255,255,255,0.25)"} strokeWidth="1.5" style={{ transition: "stroke 0.2s" }}/>
-                <path d="M13.5 13.5L17 17" stroke={focused ? "#00E5FF" : "rgba(255,255,255,0.25)"} strokeWidth="1.5" strokeLinecap="round" style={{ transition: "stroke 0.2s" }}/>
-              </svg>
-            </div>
-
+            ROOT@CHAINVISION:~$ SCAN_WALLET
+          </div>
+          <div style={{
+            display: "flex", alignItems: "center",
+            border: focused ? "1px solid #00FF88" : "1px solid #1a3a1a",
+            background: "#040a04",
+            transition: "border-color 0.2s",
+            boxShadow: focused ? "0 0 20px rgba(0,255,136,0.08)" : "none",
+          }}>
+            <span style={{ padding: "14px 12px 14px 16px", color: "#336633", fontSize: "13px", flexShrink: 0 }}>
+              ▶
+            </span>
             <input
               type="text"
               value={address}
@@ -217,184 +184,170 @@ export default function Home() {
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="0x... wallet address or ENS name"
+              placeholder="0x... or ENS name"
               style={{
                 flex: 1,
                 background: "transparent",
-                border: "none",
-                outline: "none",
-                color: "white",
-                fontSize: "15px",
+                border: "none", outline: "none",
+                color: "#00FF88",
+                fontSize: "14px",
                 fontFamily: "'Courier New', monospace",
-                padding: "14px 4px",
-                caretColor: "#00E5FF",
+                padding: "14px 8px",
+                caretColor: "#00FF88",
               }}
             />
-
             <button
               onClick={handleSearch}
               disabled={!address.trim()}
               style={{
-                flexShrink: 0,
-                padding: "14px 30px",
-                borderRadius: "12px",
+                padding: "14px 28px",
+                background: address.trim() ? "#00FF88" : "transparent",
                 border: "none",
-                fontWeight: 700,
-                fontSize: "14px",
+                borderLeft: "1px solid #1a3a1a",
+                color: address.trim() ? "#020502" : "#1a3a1a",
+                fontFamily: "monospace",
+                fontSize: "12px",
+                fontWeight: "bold",
+                letterSpacing: "0.1em",
                 cursor: address.trim() ? "pointer" : "not-allowed",
-                background: address.trim()
-                  ? "linear-gradient(135deg, #00E5FF, #00BBDD)"
-                  : "rgba(255,255,255,0.06)",
-                color: address.trim() ? "#060810" : "rgba(255,255,255,0.2)",
-                transition: "all 0.2s ease",
-                letterSpacing: "0.02em",
+                transition: "all 0.15s",
+                flexShrink: 0,
               }}
             >
-              Analyze →
+              EXECUTE →
             </button>
           </div>
 
-          {/* Demo wallet pills */}
+          {/* Demo wallets */}
           <div style={{
             display: "flex", alignItems: "center", gap: "8px",
-            marginTop: "14px", flexWrap: "wrap", justifyContent: "center",
+            marginTop: "10px", flexWrap: "wrap",
           }}>
-            <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)" }}>Try demo:</span>
+            <span style={{ fontSize: "10px", color: "#1a3a1a", letterSpacing: "0.1em" }}>DEMO_WALLETS:</span>
             {DEMO_WALLETS.map((w) => (
               <button
                 key={w.address}
                 onClick={() => setAddress(w.address)}
                 style={{
-                  fontSize: "12px",
-                  color: "rgba(0,229,255,0.7)",
-                  background: "rgba(0,229,255,0.05)",
-                  border: "1px solid rgba(0,229,255,0.15)",
-                  borderRadius: "999px",
-                  padding: "5px 14px",
-                  cursor: "pointer",
+                  fontSize: "10px",
+                  color: "#336633",
+                  background: "transparent",
+                  border: "1px solid #1a3a1a",
+                  padding: "3px 12px",
                   fontFamily: "monospace",
-                  transition: "all 0.15s ease",
+                  cursor: "pointer",
+                  letterSpacing: "0.06em",
+                  transition: "all 0.15s",
                 }}
                 onMouseEnter={(e) => {
-                  const el = e.currentTarget;
-                  el.style.color = "#00E5FF";
-                  el.style.borderColor = "rgba(0,229,255,0.5)";
-                  el.style.background = "rgba(0,229,255,0.1)";
+                  e.currentTarget.style.color = "#00FF88";
+                  e.currentTarget.style.borderColor = "#00FF88";
+                  e.currentTarget.style.background = "#00FF8811";
                 }}
                 onMouseLeave={(e) => {
-                  const el = e.currentTarget;
-                  el.style.color = "rgba(0,229,255,0.7)";
-                  el.style.borderColor = "rgba(0,229,255,0.15)";
-                  el.style.background = "rgba(0,229,255,0.05)";
+                  e.currentTarget.style.color = "#336633";
+                  e.currentTarget.style.borderColor = "#1a3a1a";
+                  e.currentTarget.style.background = "transparent";
                 }}
               >
-                {w.label}
+                [{w.label}]
               </button>
             ))}
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats row */}
         <div style={{
-          display: "flex",
-          marginTop: "64px",
-          borderRadius: "16px",
-          overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(255,255,255,0.02)",
+          width: "100%", maxWidth: "680px",
+          display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
+          border: "1px solid #1a2a1a",
+          background: "#030a03",
+          marginBottom: "60px",
+          marginTop: "32px",
         }}>
           {STATS.map((s, i) => (
             <div key={s.label} style={{
-              padding: "22px 36px",
+              padding: "16px 20px",
+              borderRight: i < STATS.length - 1 ? "1px solid #1a2a1a" : "none",
               textAlign: "center",
-              borderRight: i < STATS.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
             }}>
-              <div style={{ fontSize: "24px", fontWeight: 800, color: "white", letterSpacing: "-0.5px" }}>
+              <div style={{ fontSize: "18px", fontWeight: "bold", color: "#00FF88", marginBottom: "4px", letterSpacing: "-0.5px" }}>
                 {s.value}
               </div>
-              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.35)", marginTop: "4px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <div style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.1em" }}>
                 {s.label}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Section title */}
-        <div style={{ marginTop: "80px", marginBottom: "8px", textAlign: "center" }}>
-          <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "12px" }}>
-            What you get
+        {/* Features */}
+        <div style={{ width: "100%", maxWidth: "900px" }}>
+          <div style={{
+            fontSize: "10px", color: "#1a3a1a",
+            letterSpacing: "0.15em", marginBottom: "16px",
+          }}>
+            ── AVAILABLE_MODULES ──────────────────────────────────────────────────────────
           </div>
-          <h2 style={{ fontSize: "32px", fontWeight: 800, letterSpacing: "-1px", color: "white" }}>
-            Everything about a wallet.
-          </h2>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "1px",
+            background: "#1a2a1a",
+            border: "1px solid #1a2a1a",
+          }}>
+            {FEATURES.map((f) => (
+              <div
+                key={f.key}
+                onMouseEnter={() => setHoveredFeature(f.key)}
+                onMouseLeave={() => setHoveredFeature(null)}
+                style={{
+                  background: hoveredFeature === f.key ? "#0a150a" : "#030a03",
+                  padding: "20px 20px",
+                  transition: "background 0.15s",
+                  cursor: "default",
+                }}
+              >
+                <div style={{
+                  fontSize: "11px",
+                  fontWeight: "bold",
+                  color: hoveredFeature === f.key ? f.color : "#00FF88",
+                  letterSpacing: "0.1em",
+                  marginBottom: "8px",
+                  transition: "color 0.15s",
+                }}>
+                  ▸ {f.key}
+                </div>
+                <div style={{
+                  fontSize: "11px",
+                  color: "#336633",
+                  lineHeight: 1.6,
+                  letterSpacing: "0.02em",
+                }}>
+                  {f.desc}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Feature grid */}
+        {/* Footer */}
         <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "12px",
-          maxWidth: "880px",
-          width: "100%",
-          marginTop: "32px",
+          marginTop: "60px",
+          fontSize: "10px", color: "#1a3a1a",
+          letterSpacing: "0.1em", textAlign: "center",
         }}>
-          {FEATURES.map((f) => (
-            <div
-              key={f.title}
-              onMouseEnter={() => setHoveredFeature(f.title)}
-              onMouseLeave={() => setHoveredFeature(null)}
-              style={{
-                background: hoveredFeature === f.title ? `${f.color}08` : "rgba(255,255,255,0.02)",
-                border: hoveredFeature === f.title ? `1px solid ${f.color}35` : "1px solid rgba(255,255,255,0.06)",
-                borderRadius: "16px",
-                padding: "28px 24px",
-                transition: "all 0.2s ease",
-                transform: hoveredFeature === f.title ? "translateY(-3px)" : "translateY(0)",
-                cursor: "default",
-              }}
-            >
-              <div style={{
-                fontSize: "28px",
-                marginBottom: "16px",
-                width: "52px", height: "52px",
-                borderRadius: "14px",
-                background: `${f.color}12`,
-                border: `1px solid ${f.color}25`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                {f.emoji}
-              </div>
-              <div style={{ fontSize: "15px", fontWeight: 700, color: "white", marginBottom: "8px" }}>
-                {f.title}
-              </div>
-              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", lineHeight: 1.65 }}>
-                {f.desc}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer note */}
-        <div style={{
-          marginTop: "80px",
-          display: "flex", alignItems: "center", gap: "16px",
-          opacity: 0.25,
-        }}>
-          <div style={{ height: "1px", width: "48px", background: "white" }} />
-          <span style={{ fontSize: "12px", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-            Data by Dune SIM · 60+ EVM Chains
-          </span>
-          <div style={{ height: "1px", width: "48px", background: "white" }} />
+          ── END_OF_OUTPUT ── CHAINVISION_v1.0 ── DATA_BY_DUNE_SIM ──
         </div>
       </div>
 
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        ::placeholder { color: rgba(255,255,255,0.2); }
+        ::placeholder { color: #1a3a1a; font-family: 'Courier New', monospace; }
+        ::selection { background: rgba(0,255,136,0.2); }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #020502; }
+        ::-webkit-scrollbar-thumb { background: #1a3a1a; }
       `}</style>
     </div>
   );
