@@ -7,10 +7,15 @@ export async function POST(req: NextRequest) {
     if (!prompt) return NextResponse.json({ error: "Prompt required" }, { status: 400 });
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "GEMINI_API_KEY not set in .env.local" }, { status: 500 });
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "GEMINI_API_KEY not set in .env.local" },
+        { status: 500 }
+      );
+    }
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
