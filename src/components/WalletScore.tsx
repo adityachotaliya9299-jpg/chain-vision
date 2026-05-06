@@ -83,7 +83,7 @@ function ScoreBar({
     // For others, high = good (green)
     if (v >= 70) return color;
     if (v >= 40) return "#FFAA00";
-    return "#555";
+    return "rgba(0, 255, 136, 0.3)";
   };
 
   const barColor = levelColor(label, value);
@@ -92,10 +92,10 @@ function ScoreBar({
     <div style={{ marginBottom: "16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "11px", color: "#88BB88", letterSpacing: "0.1em", fontFamily: "monospace" }}>
+          <span style={{ fontSize: "11px", color: "rgba(0, 255, 136, 0.85)", letterSpacing: "0.1em", fontFamily: "monospace" }}>
             {label}
           </span>
-          <span style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.06em" }}>{description}</span>
+          <span style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.6)", letterSpacing: "0.06em" }}>{description}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <span style={{
@@ -115,7 +115,7 @@ function ScoreBar({
       {/* Bar track */}
       <div style={{
         height: "4px",
-        background: "#0d1a0d",
+        background: "rgba(0, 255, 136, 0.1)",
         position: "relative",
         overflow: "hidden",
       }}>
@@ -134,7 +134,7 @@ function ScoreBar({
             left: `${tick}%`,
             width: "1px",
             height: "100%",
-            background: "#1a3a1a",
+            background: "rgba(0, 255, 136, 0.25)",
           }} />
         ))}
       </div>
@@ -147,7 +147,7 @@ function ScoreRing({ score, walletType }: { score: number; walletType: string })
   const color =
     score >= 75 ? "#00FF88" :
     score >= 50 ? "#FFAA00" :
-    score >= 25 ? "#FF6B6B" : "#555";
+    score >= 25 ? "#FF6B6B" : "rgba(0, 255, 136, 0.3)";
 
   const circumference = 2 * Math.PI * 45;
   const strokeDash = (score / 100) * circumference;
@@ -158,7 +158,7 @@ function ScoreRing({ score, walletType }: { score: number; walletType: string })
       <div style={{ position: "relative", width: "120px", height: "120px", flexShrink: 0 }}>
         <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform: "rotate(-90deg)" }}>
           {/* Track */}
-          <circle cx="60" cy="60" r="45" fill="none" stroke="#0d1a0d" strokeWidth="8" />
+          <circle cx="60" cy="60" r="45" fill="none" stroke="rgba(0, 255, 136, 0.1)" strokeWidth="8" />
           {/* Progress */}
           <circle
             cx="60" cy="60" r="45"
@@ -176,7 +176,7 @@ function ScoreRing({ score, walletType }: { score: number; walletType: string })
             const y1 = 60 + 41 * Math.sin(angle);
             const x2 = 60 + 49 * Math.cos(angle);
             const y2 = 60 + 49 * Math.sin(angle);
-            return <line key={pct} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#1a3a1a" strokeWidth="1" />;
+            return <line key={pct} x1={x1} y1={y1} x2={x2} y2={y2} stroke="rgba(0, 255, 136, 0.3)" strokeWidth="1" />;
           })}
         </svg>
         {/* Center text */}
@@ -188,13 +188,13 @@ function ScoreRing({ score, walletType }: { score: number; walletType: string })
           <span style={{ fontSize: "28px", fontWeight: 900, color, fontFamily: "monospace", lineHeight: 1 }}>
             {score}
           </span>
-          <span style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.1em" }}>/ 100</span>
+          <span style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.6)", letterSpacing: "0.1em" }}>/ 100</span>
         </div>
       </div>
 
       {/* Wallet type + verdict */}
       <div>
-        <div style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.15em", marginBottom: "8px" }}>
+        <div style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.6)", letterSpacing: "0.15em", marginBottom: "8px" }}>
           WALLET_CLASSIFICATION
         </div>
         <div style={{
@@ -210,12 +210,12 @@ function ScoreRing({ score, walletType }: { score: number; walletType: string })
         }}>
           {walletType}
         </div>
-        <div style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.15em", marginBottom: "6px" }}>
+        <div style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.6)", letterSpacing: "0.15em", marginBottom: "6px" }}>
           OVERALL_SCORE
         </div>
         <div style={{
           fontSize: "11px",
-          color: score >= 50 ? "#88BB88" : "#FF6B6B",
+          color: score >= 50 ? "rgba(0, 255, 136, 0.85)" : "#FF6B6B",
           letterSpacing: "0.05em",
           lineHeight: 1.5,
         }}>
@@ -317,49 +317,49 @@ export default function WalletScore({ address, balances, activity, nfts, transac
   };
 
   return (
-    <div style={{ padding: "24px 20px", maxWidth: "860px" }}>
+    <div style={{ padding: "24px 20px", maxWidth: "860px", margin: "0 auto" }}>
 
       {/* ── INITIAL STATE ── */}
       {!analysis && !loading && !error && (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em" }}>
+          <div style={{ fontSize: "10px", color: "rgba(0, 255, 136, 0.6)", letterSpacing: "0.12em" }}>
             ROOT@CHAINVISION:~$ RUN_WALLET_INTELLIGENCE --model llama-3.3-70b
           </div>
-          <div style={{ border: "1px solid #1a3a1a", background: "#030a03", padding: "24px" }}>
+          <div style={{ border: "1px solid rgba(0, 255, 136, 0.2)", background: "#030a03", padding: "24px" }}>
 
             {/* Preview of what the score looks like */}
-            <div style={{ marginBottom: "20px", padding: "16px", background: "#020502", border: "1px solid #0d1a0d" }}>
-              <div style={{ fontSize: "9px", color: "#1a3a1a", letterSpacing: "0.15em", marginBottom: "12px" }}>
+            <div style={{ marginBottom: "20px", padding: "16px", background: "#020502", border: "1px solid rgba(0, 255, 136, 0.15)" }}>
+              <div style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.5)", letterSpacing: "0.15em", marginBottom: "12px" }}>
                 PREVIEW — WALLET_INTELLIGENCE_REPORT
               </div>
               <div style={{ display: "flex", gap: "20px", alignItems: "center", marginBottom: "16px" }}>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "32px", fontWeight: 900, color: "#1a3a1a", fontFamily: "monospace" }}>??</div>
-                  <div style={{ fontSize: "9px", color: "#1a3a1a" }}>SCORE</div>
+                  <div style={{ fontSize: "32px", fontWeight: 900, color: "rgba(0, 255, 136, 0.5)", fontFamily: "monospace" }}>??</div>
+                  <div style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.5)" }}>SCORE</div>
                 </div>
                 <div style={{ flex: 1 }}>
                   {["WHALE_PROBABILITY", "DEFI_SOPHISTICATION", "BOT_LIKELIHOOD"].map((label) => (
                     <div key={label} style={{ marginBottom: "8px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                        <span style={{ fontSize: "9px", color: "#1a3a1a", fontFamily: "monospace" }}>{label}</span>
-                        <span style={{ fontSize: "9px", color: "#1a3a1a" }}>??</span>
+                        <span style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.6)", fontFamily: "monospace" }}>{label}</span>
+                        <span style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.6)" }}>??</span>
                       </div>
-                      <div style={{ height: "3px", background: "#0d1a0d" }}>
-                        <div style={{ height: "100%", width: "40%", background: "#1a3a1a" }} />
+                      <div style={{ height: "3px", background: "rgba(0, 255, 136, 0.1)" }}>
+                        <div style={{ height: "100%", width: "40%", background: "rgba(0, 255, 136, 0.3)" }} />
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-              <div style={{ fontSize: "10px", color: "#1a3a1a", fontStyle: "italic" }}>
+              <div style={{ fontSize: "10px", color: "rgba(0, 255, 136, 0.6)", fontStyle: "italic" }}>
                 // Run analysis to reveal wallet intelligence...
               </div>
             </div>
 
-            <div style={{ fontSize: "12px", color: "#336633", lineHeight: 1.9, marginBottom: "20px" }}>
-              <span style={{ color: "#1a3a1a" }}>//</span> Generates a scored intelligence report using LLaMA 3.3-70B<br />
-              <span style={{ color: "#1a3a1a" }}>//</span> Scores: Whale Probability · DeFi Sophistication · Bot Detection<br />
-              <span style={{ color: "#1a3a1a" }}>//</span> Data ready:{" "}
+            <div style={{ fontSize: "12px", color: "rgba(0, 255, 136, 0.7)", lineHeight: 1.9, marginBottom: "20px" }}>
+              <span style={{ color: "rgba(0, 255, 136, 0.4)" }}>//</span> Generates a scored intelligence report using LLaMA 3.3-70B<br />
+              <span style={{ color: "rgba(0, 255, 136, 0.4)" }}>//</span> Scores: Whale Probability · DeFi Sophistication · Bot Detection<br />
+              <span style={{ color: "rgba(0, 255, 136, 0.4)" }}>//</span> Data ready:{" "}
               <span style={{ color: "#00FF88" }}>{balances?.length ?? 0} tokens</span>{" · "}
               <span style={{ color: "#00E5FF" }}>{activity?.length ?? 0} activities</span>{" · "}
               <span style={{ color: "#A78BFA" }}>{nfts?.length ?? 0} NFTs</span>{" · "}
@@ -384,31 +384,31 @@ export default function WalletScore({ address, balances, activity, nfts, transac
       {/* ── LOADING STATE ── */}
       {loading && (
         <div>
-          <div style={{ fontSize: "11px", color: "#336633", letterSpacing: "0.12em", marginBottom: "24px" }}>
+          <div style={{ fontSize: "11px", color: "rgba(0, 255, 136, 0.6)", letterSpacing: "0.12em", marginBottom: "24px" }}>
             ANALYZING_WALLET_INTELLIGENCE{tick ? "█" : " "}
           </div>
           {/* Animated score ring placeholder */}
           <div style={{ display: "flex", alignItems: "center", gap: "24px", marginBottom: "32px" }}>
             <div style={{
               width: "120px", height: "120px", borderRadius: "50%",
-              border: "8px solid #0d1a0d",
+              border: "8px solid rgba(0, 255, 136, 0.1)",
               animation: "shimmer 1.5s infinite",
               flexShrink: 0,
             }} />
             <div style={{ flex: 1 }}>
-              <div style={{ height: "16px", width: "120px", background: "#0d1a0d", marginBottom: "10px", animation: "shimmer 1.5s infinite" }} />
-              <div style={{ height: "24px", width: "180px", background: "#0d1a0d", animation: "shimmer 1.5s infinite" }} />
+              <div style={{ height: "16px", width: "120px", background: "rgba(0, 255, 136, 0.1)", marginBottom: "10px", animation: "shimmer 1.5s infinite" }} />
+              <div style={{ height: "24px", width: "180px", background: "rgba(0, 255, 136, 0.1)", animation: "shimmer 1.5s infinite" }} />
             </div>
           </div>
           {/* Skeleton bars */}
           {["WHALE_PROBABILITY", "DEFI_SOPHISTICATION", "DIVERSIFICATION", "BOT_LIKELIHOOD", "RISK_SCORE"].map((label) => (
             <div key={label} style={{ marginBottom: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                <div style={{ height: "11px", width: "160px", background: "#0d1a0d", animation: "shimmer 1.5s infinite" }} />
-                <div style={{ height: "11px", width: "30px", background: "#0d1a0d", animation: "shimmer 1.5s infinite" }} />
+                <div style={{ height: "11px", width: "160px", background: "rgba(0, 255, 136, 0.1)", animation: "shimmer 1.5s infinite" }} />
+                <div style={{ height: "11px", width: "30px", background: "rgba(0, 255, 136, 0.1)", animation: "shimmer 1.5s infinite" }} />
               </div>
-              <div style={{ height: "4px", background: "#0d1a0d" }}>
-                <div style={{ height: "100%", width: "0%", background: "#1a3a1a" }} />
+              <div style={{ height: "4px", background: "rgba(0, 255, 136, 0.1)" }}>
+                <div style={{ height: "100%", width: "0%", background: "rgba(0, 255, 136, 0.2)" }} />
               </div>
             </div>
           ))}
@@ -417,7 +417,7 @@ export default function WalletScore({ address, balances, activity, nfts, transac
 
       {/* ── ERROR STATE ── */}
       {error && !loading && (
-        <div style={{ border: "1px solid #550000", background: "#1a0505", padding: "20px" }}>
+        <div style={{ border: "1px solid rgba(255, 68, 102, 0.4)", background: "rgba(255, 68, 102, 0.05)", padding: "20px" }}>
           <div style={{ color: "#FF4466", fontSize: "12px", marginBottom: "12px", lineHeight: 1.6 }}>
             ERROR: {error}
           </div>
@@ -430,7 +430,7 @@ export default function WalletScore({ address, balances, activity, nfts, transac
       {/* ── RESULTS ── */}
       {analysis && !loading && (
         <div>
-          <div style={{ fontSize: "10px", color: "#336633", letterSpacing: "0.12em", marginBottom: "24px" }}>
+          <div style={{ fontSize: "10px", color: "rgba(0, 255, 136, 0.6)", letterSpacing: "0.12em", marginBottom: "24px" }}>
             ── WALLET_INTELLIGENCE_COMPLETE ── MODEL: LLAMA-3.3-70B ──────────
           </div>
 
@@ -440,11 +440,11 @@ export default function WalletScore({ address, balances, activity, nfts, transac
           {/* Verdict */}
           <div style={{
             padding: "14px 18px",
-            border: "1px solid #1a3a1a",
+            border: "1px solid rgba(0, 255, 136, 0.2)",
             background: "#030a03",
             marginBottom: "28px",
           }}>
-            <div style={{ fontSize: "9px", color: "#336633", letterSpacing: "0.15em", marginBottom: "6px" }}>VERDICT</div>
+            <div style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.6)", letterSpacing: "0.15em", marginBottom: "6px" }}>VERDICT</div>
             <div style={{ fontSize: "13px", color: "#00FF88", lineHeight: 1.6, fontStyle: "italic" }}>
               "{analysis.verdict}"
             </div>
@@ -458,8 +458,8 @@ export default function WalletScore({ address, balances, activity, nfts, transac
                   fontSize: "9px",
                   letterSpacing: "0.1em",
                   padding: "3px 10px",
-                  border: "1px solid #1a3a1a",
-                  color: "#336633",
+                  border: "1px solid rgba(0, 255, 136, 0.3)",
+                  color: "rgba(0, 255, 136, 0.7)",
                   background: "#030a03",
                 }}>
                   ◆ {flag}
@@ -470,7 +470,7 @@ export default function WalletScore({ address, balances, activity, nfts, transac
 
           {/* Score bars */}
           <div style={{ marginBottom: "32px" }}>
-            <div style={{ fontSize: "9px", color: "#1a3a1a", letterSpacing: "0.15em", marginBottom: "16px" }}>
+            <div style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.5)", letterSpacing: "0.15em", marginBottom: "16px" }}>
               ── INTELLIGENCE_SCORES ────────────────────────────────────────────
             </div>
             {SCORE_BARS.map((bar) => (
@@ -480,13 +480,13 @@ export default function WalletScore({ address, balances, activity, nfts, transac
 
           {/* Sections — collapsible */}
           <div>
-            <div style={{ fontSize: "9px", color: "#1a3a1a", letterSpacing: "0.15em", marginBottom: "16px" }}>
+            <div style={{ fontSize: "9px", color: "rgba(0, 255, 136, 0.5)", letterSpacing: "0.15em", marginBottom: "16px" }}>
               ── DETAILED_ANALYSIS ──────────────────────────────────────────────
             </div>
             {Object.entries(analysis.sections).map(([key, text]) => (
               <div key={key}
                 style={{
-                  borderBottom: "1px solid #0d1a0d",
+                  borderBottom: "1px solid rgba(0, 255, 136, 0.1)",
                   cursor: "pointer",
                 }}
                 onClick={() => setExpandedSection(expandedSection === key ? null : key)}
@@ -495,7 +495,7 @@ export default function WalletScore({ address, balances, activity, nfts, transac
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                   padding: "14px 0",
                 }}
-                  onMouseEnter={(e) => (e.currentTarget.parentElement!.style.background = "#0a150a")}
+                  onMouseEnter={(e) => (e.currentTarget.parentElement!.style.background = "rgba(0, 255, 136, 0.05)")}
                   onMouseLeave={(e) => (e.currentTarget.parentElement!.style.background = "transparent")}
                 >
                   <div style={{
@@ -505,7 +505,7 @@ export default function WalletScore({ address, balances, activity, nfts, transac
                   }}>
                     [{key}]
                   </div>
-                  <span style={{ color: "#336633", fontSize: "10px" }}>
+                  <span style={{ color: "rgba(0, 255, 136, 0.6)", fontSize: "10px" }}>
                     {expandedSection === key ? "▲ COLLAPSE" : "▼ EXPAND"}
                   </span>
                 </div>
@@ -513,7 +513,7 @@ export default function WalletScore({ address, balances, activity, nfts, transac
                   <div style={{
                     padding: "0 0 16px 12px",
                     fontSize: "13px",
-                    color: "#88BB88",
+                    color: "rgba(0, 255, 136, 0.85)",
                     lineHeight: 1.8,
                     maxWidth: "680px",
                     borderLeft: `2px solid ${SECTION_COLORS[key] || "#00FF88"}33`,
@@ -530,12 +530,12 @@ export default function WalletScore({ address, balances, activity, nfts, transac
             <button
               onClick={runAnalysis}
               style={{
-                background: "transparent", border: "1px solid #1a3a1a",
-                color: "#336633", fontFamily: "monospace",
+                background: "transparent", border: "1px solid rgba(0, 255, 136, 0.3)",
+                color: "rgba(0, 255, 136, 0.6)", fontFamily: "monospace",
                 fontSize: "10px", padding: "8px 20px", cursor: "pointer", letterSpacing: "0.08em",
               }}
               onMouseEnter={(e) => { e.currentTarget.style.color = "#00FF88"; e.currentTarget.style.borderColor = "#00FF88"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "#336633"; e.currentTarget.style.borderColor = "#1a3a1a"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(0, 255, 136, 0.6)"; e.currentTarget.style.borderColor = "rgba(0, 255, 136, 0.3)"; }}
             >
               ↻ RE_ANALYZE
             </button>
