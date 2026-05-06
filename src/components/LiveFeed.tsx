@@ -132,7 +132,7 @@ export default function LiveFeed({ address }: Props) {
           }
         } else if (msg.type === "update" && msg.events?.length > 0) {
           setIsDemo(false);
-          const ids = new Set(msg.events.map((ev: WebhookEvent) => ev.id));
+          const ids = new Set<string>(msg.events.map((ev: WebhookEvent) => ev.id));
           setNewEventIds(ids);
           setTimeout(() => setNewEventIds(new Set()), 3000);
           setEvents((prev) => [...msg.events, ...prev].slice(0, 50));
