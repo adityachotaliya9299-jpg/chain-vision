@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Wallets ──────────────────────────────────────────────────────────────────
+model Wallet {
+  id              String   @id @default(cuid())
+  address         String   @unique
+  chain           String   @default("ethereum") // ethereum | solana | multi
+  label           String?  // "Wintermute", "Jump Trading", "Unknown"
+  category        String?  // WHALE | DEFI_DEGEN | MEV_BOT | SMART_LP | etc
+  isSmartMoney    Boolean  @default(false)
+  isVerified      Boolean  @default(false)
+  
+  // Scores (0-100)
+  alphaScore      Int?
+  winRate30d      Float?
+  avgHoldTimeDays Float?
+  botProbability  Int?
+  whaleProbability Int?
+  convictionScore Int?
+  sniperProb      Int?
+  
+  // PnL
+  realizedPnl30d  Float?
+  unrealizedPnl   Float?
+  
+  // Meta
+  firstSeen       DateTime?
+  lastActive      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  events          Event[]
+  features        WalletFeature?
+  signals         SignalWallet[]
+
+  @@index([isSmartMoney])
+  @@index([alphaScore])
+  @@index([category])
+}
+
+// ─── Events (decoded transactions) ───────────────────────────────────────────
+model Event {
+  id            String   @id @default(cuid())
+  walletAddress String
+  chain         String
+  txHash        String
+  eventType     String   // SWAP | TRANSFER | LP_ADD | LP_REMOVE | BRIDGE | MINT | BURN | APPROVE
+  signalType    String?  // SMART_MONEY_BUY | WHALE_TRANSFER | LP_REMOVAL | etc
+  
+  tokenAddress  String?
+  tokenSymbol   String?
+  amountUsd     Float?
+  
+  fromAddress   String?
+  toAddress     String?
+  
+  blockTime     DateTime
+  classifiedAt  DateTime @default(now())
+  
+  metadata      Json?    // Extra data: protocol, method, etc
+
+  wallet        Wallet   @relation(fields: [walletAddress], references: [address])
+
+  @@index([walletAddress])
+  @@index([eventType])
+  @@index([signalType])
+  @@index([blockTime])
+  @@index([tokenSymbol])
+}
+
+// ─── Signals (intelligence alerts) ───────────────────────────────────────────
+model Signal {
+  id            String   @id @default(cuid())
+  signalType    String   // COORDINATED_ACCUMULATION | SMART_MONEY_BUY | LP_REMOVAL | WHALE_TRANSFER
+  confidence    Int      // 0-100
+  chain         String
+  
+  tokenAddress  String?
+  tokenSymbol   String?
+  totalAmountUsd Float?
+  
+  detectedAt    DateTime @default(now())
+  isResolved    Boolean  @default(false)
+  outcomeUsd    Float?   // Filled in later to measure signal accuracy
+  
+  metadata      Json?    // Additional signal data
+  
+  wallets       SignalWallet[]
+
+  @@index([signalType])
+  @@index([detectedAt])
+  @@index([confidence])
+}
+
+// ─── Many-to-many: Signal <-> Wallet ─────────────────────────────────────────
+model SignalWallet {
+  signal        Signal   @relation(fields: [signalId], references: [id])
+  signalId      String
+  wallet        Wallet   @relation(fields: [walletAddress], references: [address])
+  walletAddress String
+
+  @@id([signalId, walletAddress])
+}
+
+// ─── Wallet Features (behavioral profile) ────────────────────────────────────
+model WalletFeature {
+  walletAddress       String   @id
+  
+  // Trading behavior
+  avgHoldTimeDays     Float?
+  winRate30d          Float?   // 0-1
+  winRate90d          Float?
+  totalTrades30d      Int?
+  
+  // PnL
+  realizedPnl30d      Float?
+  realizedPnl90d      Float?
+  unrealizedPnl       Float?
+  avgTradeSize        Float?
+  
+  // Scores
+  alphaScore          Int?     // 0-100: buys before pumps
+  sniperProbability   Int?     // 0-100: buys in first 100 blocks
+  panicSellRate       Float?   // 0-1: sells during drops
+  convictionScore     Int?     // 0-100: adds on dips
+  trendDetectionSkill Int?     // 0-100: timing quality
+  
+  // Classifications
+  walletType          String?  // ALPHA_WHALE | MEMECOIN_DEGEN | MEV_BOT | etc
+  volatilityAppetite  String?  // low | medium | high | extreme
+  bridgePreference    String?  // "ethereum_to_solana" etc
+  lpBehavior          String?  // "exits_before_dump" | "holds_through" | "panic_exits"
+  chainRotation       String?  // "follows_volume" | "ecosystem_loyal" | "opportunistic"
+  
+  // Narrative affinity (0-1 each)
+  narrativeAffinity   Json?    // { memecoins: 0.87, defi: 0.23, nfts: 0.12 }
+  
+  updatedAt           DateTime @updatedAt
+  
+  wallet              Wallet   @relation(fields: [walletAddress], references: [address])
+}
+
+// ─── Known Entities (exchange wallets, VCs, etc) ─────────────────────────────
+model KnownEntity {
+  id          String   @id @default(cuid())
+  address     String   @unique
+  name        String   // "Binance Hot Wallet", "Paradigm", "Wintermute"
+  category    String   // EXCHANGE | VC | MEV_BOT | PROTOCOL | INFLUENCER | BRIDGE
+  chain       String   @default("ethereum")
+  confidence  Int      @default(100) // 0-100
+  source      String?  // "manual" | "etherscan" | "dune"
+  createdAt   DateTime @default(now())
+
+  @@index([category])
+  @@index([chain])
+}
+
+// ─── AI Reports (cached intelligence reports) ─────────────────────────────────
+model AIReport {
+  id            String   @id @default(cuid())
+  walletAddress String
+  reportType    String   @default("full") // full | summary | comparison
+  content       Json     // Full structured report from LLaMA
+  generatedAt   DateTime @default(now())
+  expiresAt     DateTime // Cache for 24h
+
+  @@index([walletAddress])
+  @@index([generatedAt])
+}
+
+// ─── User Watchlists ──────────────────────────────────────────────────────────
+model Watchlist {
+  id          String          @id @default(cuid())
+  slug        String          @unique // URL-safe identifier
+  name        String
+  description String?
+  isPublic    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  wallets     WatchlistItem[]
+}
+
+model WatchlistItem {
+  id            String    @id @default(cuid())
+  watchlistId   String
+  walletAddress String
+  label         String?   // Custom label for this watchlist
+  addedAt       DateTime  @default(now())
+  
+  watchlist     Watchlist @relation(fields: [watchlistId], references: [id])
+
+  @@unique([watchlistId, walletAddress])
+}
+
+// ─── Token Registry (cache token metadata) ───────────────────────────────────
+model Token {
+  address     String   @id
+  symbol      String
+  name        String
+  chain       String
+  category    String?  // memecoin | defi | nft | infrastructure | stablecoin
+  logoUrl     String?
+  coingeckoId String?
+  isVerified  Boolean  @default(false)
+  isRug       Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  @@index([symbol])
+  @@index([chain])
+  @@index([category])
+  @@index([isRug])
+}
